@@ -1,7 +1,7 @@
 # Team Success Log
 
-Every hour on weekdays, 9am–5pm Eastern, Claude reads Hayden's Slack (mentions, DMs, and
-Team Success group tags), sorts each ask into Team Success or Personal, and drafts a record
+Every hour on weekdays, 9am–5pm Eastern, Claude reads Hayden's Slack (mentions, DMs,
+Team Success group tags, and #forum_teamsuccess), sorts each ask into Team Success or Personal, and drafts a record
 in the Team Success Log Airtable base. Nothing reaches the shared Team Log until Hayden
 ticks Approved.
 

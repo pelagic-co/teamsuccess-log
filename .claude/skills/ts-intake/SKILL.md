@@ -1,6 +1,6 @@
 ---
 name: ts-intake
-description: Team Success Slack intake. Scan Hayden's Slack (mentions, DMs, Team Success group tags), classify each ask as Team Success or Personal, and draft records into the Team Success Log Airtable base for Hayden's review. Also handles "show open rule changes". Use for the hourly intake run, a manual dry run, or any question about intake rules.
+description: Team Success Slack intake. Scan Hayden's Slack (mentions, DMs, Team Success group tags, #forum_teamsuccess), classify each ask as Team Success or Personal, and draft records into the Team Success Log Airtable base for Hayden's review. Also handles "show open rule changes". Use for the hourly intake run, a manual dry run, or any question about intake rules.
 ---
 
 # Team Success Slack intake
@@ -9,7 +9,7 @@ This file is the single home for every intake and classification rule. Hayden ed
 (from Claude Code on his phone or anywhere else); each edit is a commit; the next run uses
 the new version. If a rule is not written here, it is not a rule.
 
-**Rules version:** 2026-10-21 · v1
+**Rules version:** 2026-10-21 · v1.1
 
 ## Hard rules (never break these)
 
@@ -32,7 +32,8 @@ the new version. If a rule is not written here, it is not a rule.
 |---|---|
 | @-mentions of Hayden | Messages containing `<@U07Q9KYU4MR>` in any channel Hayden can see |
 | DMs to Hayden | 1:1 DMs where the author is not Hayden |
-| Team Success group tags | Messages containing `<!subteam^S0AUZBR2VAL>` — **UNCONFIRMED, see Open questions** |
+| Team Success group tags | Messages containing `<!subteam^S0AUZBR2VAL>` (the team_success group) in any channel |
+| Team Success forum | Every message and thread reply in `#forum_teamsuccess` (`C0CA48ZUV16`) |
 
 - Hayden's Slack user ID: `U07Q9KYU4MR`. Workspace: pelagicworkspace.slack.com.
 - Skip: Hayden's own messages, bots, and messages Hayden only appears in as a cc with no
@@ -62,13 +63,16 @@ Before drafting, load every **Slack link** and **Slack thread** value from Reque
 
 ### Type: Team Success vs Personal
 
-Decide in this order. First match wins.
+The test is whose work it is, not which client it names. Decide in this order. First
+match wins.
 
-1. **Personal clients.** Anything about **DairyPill** (Dairy Pill), **Little Saints**, or
-   **Fronen** → **Personal**. This includes the brand name, its people, its Slack
-   channels, and its Airtable bases (e.g. "Dairy Pill Interfaces").
-2. **Hayden's own account work** (Hayden is the operator, not TS) → **Personal**.
-3. **Anything asking TS (or Hayden as TS) for a resource** → **TS**.
+1. **Tagged to Team Success** (the team_success group, or posted in
+   `#forum_teamsuccess`) → **TS**, whatever the client. Example: a teammate's ask about
+   their Fronen hours tracker, tagged to team_success, is TS.
+2. **Hayden's own account work** (Hayden is the operator) → **Personal**. Hayden's own
+   accounts: **DairyPill** (Dairy Pill), **Little Saints**, **Fronen**. An ask of Hayden
+   about one of these, outside the TS sources above, is his own work.
+3. **Anything asking Hayden as TS for a resource** → **TS**.
 4. **Everything else that is an ask of Hayden** → **Personal**.
 
 Never discard. When unsure between TS and Personal, pick the best fit and say why in
@@ -87,6 +91,7 @@ message gives nothing to go on, and say what's missing in **Claude notes**.
   is Hayden's to log by hand.)
 - **Source:** map the Slack location:
   - `#01_team-support` → Team Support Slack
+  - `#forum_teamsuccess` → Team Support Slack (closest value; note it in Claude notes)
   - Service Team channel → Service Team Slack
   - 1:1 DM → DM
   - a client's internal channel → Internal client channel
@@ -212,11 +217,9 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
 - Airtable access needs `AIRTABLE_TOKEN` and `AIRTABLE_BASE_ID` set in the environment.
   If either is missing, stop and say so.
 
-## Open questions (Hayden to answer; remove when settled)
-
-- Is `<!subteam^S0AUZBR2VAL>` the Team Success group? It's tagged constantly in
-  #01_team-support for hours-tracker, 1Password and Claude-account asks.
-
 ## Changelog
 
 - 2026-10-21 · v1 created from Hayden's build brief and the Team Success request model.
+- 2026-10-21 · v1.1: team_success group confirmed (S0AUZBR2VAL). Added #forum_teamsuccess
+  as a source. Type rule is now "whose work is it": tags to TS are TS even for DairyPill,
+  Little Saints or Fronen; Hayden's own work on those accounts is Personal.
