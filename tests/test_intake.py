@@ -100,10 +100,13 @@ class Validation(unittest.TestCase):
     def test_already_logged(self):
         self.assertIn("already logged (Slack link)", validate_draft(draft(), LISTS, {LINK}))
 
-    def test_personal_has_no_request_id(self):
-        p = validate_draft(draft(Type="Personal"), LISTS, set())
-        self.assertIn("Personal drafts get no Request ID", p)
-        self.assertEqual(validate_draft(draft(Type="Personal", **{"Request ID": None}), LISTS, set()), [])
+    def test_personal_is_never_written(self):
+        for d in (draft(Type="Personal"), draft(Type="Personal", **{"Request ID": None})):
+            self.assertIn("Personal asks are not logged in this base; list them in the run summary",
+                          validate_draft(d, LISTS, set()))
+
+    def test_personal_still_a_choice_for_hayden(self):
+        self.assertIn("Personal", LISTS["type"])
 
     def test_ts_needs_request_id(self):
         self.assertIn("TS draft needs a Request ID like TS-0008",

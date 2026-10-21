@@ -1,6 +1,6 @@
 ---
 name: ts-intake
-description: Team Success Slack intake. Scan Hayden's Slack (mentions, DMs, Team Success group tags, #forum_teamsuccess), classify each ask as Team Success or Personal, and draft records into the Team Success Log Airtable base for Hayden's review. Also handles "show open rule changes". Use for the hourly intake run, a manual dry run, or any question about intake rules.
+description: Team Success Slack intake. Scan Hayden's Slack (mentions, DMs, Team Success group tags, #forum_teamsuccess), classify each ask as Team Success or Personal, and draft the Team Success ones into the Team Success Log Airtable base for Hayden's review (Personal asks are listed in the run summary, not logged). Also handles "show open rule changes". Use for the hourly intake run, a manual dry run, or any question about intake rules.
 ---
 
 # Team Success Slack intake
@@ -9,7 +9,7 @@ This file is the single home for every intake and classification rule. Hayden ed
 (from Claude Code on his phone or anywhere else); each edit is a commit; the next run uses
 the new version. If a rule is not written here, it is not a rule.
 
-**Rules version:** 2026-10-21 · v1.2
+**Rules version:** 2026-10-21 · v1.3
 
 ## Hard rules (never break these)
 
@@ -18,13 +18,16 @@ the new version. If a rule is not written here, it is not a rule.
    approved record without asking Hayden in the conversation first and getting a yes.
 3. **Never touch existing drafts either.** A run only creates new records in Requests and
    new rows in Rule Changes. Hayden does all editing.
-4. **Never delete anything.** Personal items are kept (they are Hayden's future to-do
-   list). A message that is not an ask is skipped, never logged-then-deleted.
-5. **Only these Slack sources.** Never scan all channels. See Sources.
-6. **Fail loudly.** If Slack, Airtable or the Brain is unreachable, or a value doesn't fit
+4. **Never delete anything.** A message that is not an ask, or is a Personal ask, is
+   skipped, never logged-then-deleted.
+5. **Personal asks are not logged in this base.** List each one in the run summary
+   instead. Where Personal asks should live is undecided (Hayden, 2026-10-21); until he
+   decides, never write them to Airtable or anywhere else.
+6. **Only these Slack sources.** Never scan all channels. See Sources.
+7. **Fail loudly.** If Slack, Airtable or the Brain is unreachable, or a value doesn't fit
    the lists below, stop and report it. Never guess an ID, never invent a list value,
    never write a partial run silently.
-7. **No Slack posting.** The run reads Slack. It never sends, reacts, or drafts messages.
+8. **No Slack posting.** The run reads Slack. It never sends, reacts, or drafts messages.
 
 ## Sources (only these)
 
@@ -63,9 +66,8 @@ Before drafting, load every **Slack link** and **Slack thread** value from Reque
   and different ask; then draft it as its own record and fill **Related requests**.
 - One ask = one record. Two asks in one message = two records with the same Slack link
   and a note saying "1 of 2" / "2 of 2" (dedupe treats the pair as logged).
-- **Personal DMs are grouped:** one Personal record per DM conversation per day. List the
-  separate items in **Notes**, one per line. Slack link = the first ask of the day; later
-  asks that day in the same DM count as logged.
+- **Personal asks are never logged**, so dedupe can't skip them. Because of the 2-hour
+  overlap, the same Personal ask may appear in two run summaries. That's expected.
 - **Same ask, new place** (e.g. reposted in another channel): draft it as its own record
   and fill **Related requests** with the earlier record's ID.
 
@@ -84,18 +86,23 @@ match wins.
 3. **Everything else** → **TS**. That includes work Hayden does himself on any other
    account (e.g. Nemah, SunPowder, Rosy Soil, Roostys, Lineage cover).
 
-Never discard. When unsure between TS and Personal, pick the best fit and say why in
-**Claude notes**.
+When unsure between TS and Personal, pick **TS** and say why in **Claude notes**. A wrong
+TS draft is in front of Hayden to fix; a wrong Personal call never reaches Airtable.
+
+**Personal → skip.** Don't draft it. Add it to the run summary as one line: the ask in a
+few words, the client, and the Slack link.
 
 ### Filling the fields
 
-Fill every field you can for both Types. Leave a field blank rather than guess when the
+Fill every field you can on each TS draft. Leave a field blank rather than guess when the
 message gives nothing to go on, and say what's missing in **Claude notes**.
 
 - **Summary:** one line, in the requester's words.
-- **Request ID (TS only):** next number after the highest TS-#### in Requests and after
+- **Type:** always **TS** on a draft. Hayden changes it to Personal by hand when a draft
+  isn't TS work (and says why in **Why I changed it**, which feeds the rule-change loop).
+- **Request ID:** next number after the highest TS-#### in Requests and after
   `TS-0007` (the last row backfilled in the Google Sheet), whichever is higher. Never reuse
-  a number, even if Hayden later changes the Type. Personal records get no Request ID.
+  a number, even if Hayden later changes the Type.
 - **Intake type:** "Reactive request" for everything this run finds. ("Proactive finding"
   is Hayden's to log by hand.)
 - **Source:** map the Slack location:
@@ -118,8 +125,8 @@ message gives nothing to go on, and say what's missing in **Claude notes**.
   - Ad-hoc "someone who has done it" = **Information**, not Advisor.
   - Capacity = more hours from same people; Staffing = a different person.
 - **Root cause:** one of the four. "DK referral" is never a root cause (use Needs help).
-  Leave it blank on Personal records, and on routine adds (hours tracker, PelOS, vault
-  access) where none of the four fits.
+  Leave it blank on routine adds (hours tracker, PelOS, vault access) where none of the
+  four fits.
 - **Response:** what TS has done *so far* as seen in Slack (often blank on a fresh ask).
   Fill only from evidence in the thread.
 - **Routed to:** the route from the routing map for this Resource required, by role. Hard
@@ -228,10 +235,10 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
 
 - **Hourly run (scheduled):** follow Sources → Scan window → Dedupe → Classification →
   write drafts with `python3 scripts/airtable.py create` → Rule-change loop. End with a
-  three-line summary: drafts created (TS / Personal), skipped as already logged, rule
-  changes logged. Nothing else.
-- **Dry run:** same, but write nothing to Airtable. Put the drafts in a review file for
-  Hayden instead.
+  short summary: drafts created, skipped as already logged, rule changes logged, then
+  "Personal (not logged):" with one line per Personal ask (or "none"). Nothing else.
+- **Dry run:** same, but write nothing to Airtable. Put the drafts and the Personal list
+  in a review file for Hayden instead.
 - Airtable access needs `AIRTABLE_TOKEN` and `AIRTABLE_BASE_ID` set in the environment.
   If either is missing, stop and say so.
 
@@ -247,3 +254,6 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
   Hours-tracker / PelOS access → Systems, vaults → People Ops. Added "Analysis" to
   Resource required. Root cause blank on Personal and routine adds. Same ask in a new
   place → its own record, linked via Related requests.
+- 2026-10-21 · v1.3: Personal asks are no longer logged in this base; each run lists them
+  in its summary. Where they should live is undecided. Drafts are always Type TS (Hayden
+  sets Personal by hand); when unsure, pick TS. Personal DM grouping removed.

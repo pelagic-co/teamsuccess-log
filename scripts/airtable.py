@@ -69,8 +69,8 @@ def validate_draft(draft, lists, known_links):
         problems.append("Needs help and Needs help party must both be filled or both blank")
     if draft.get("Type") == "TS" and not TS_ID.match(draft.get("Request ID") or ""):
         problems.append("TS draft needs a Request ID like TS-0008")
-    if draft.get("Type") == "Personal" and draft.get("Request ID"):
-        problems.append("Personal drafts get no Request ID")
+    if draft.get("Type") == "Personal":
+        problems.append("Personal asks are not logged in this base; list them in the run summary")
     for key in ("Slack link", "Slack thread"):
         if draft.get(key) and not SLACK_LINK.match(draft[key]):
             problems.append(f"{key} is not a Slack permalink")

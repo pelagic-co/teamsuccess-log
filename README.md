@@ -1,8 +1,9 @@
 # Team Success Log
 
 Every hour on weekdays, 9am–5pm Eastern, Claude reads Hayden's Slack (mentions, DMs,
-Team Success group tags, and #forum_teamsuccess), sorts each ask into Team Success or Personal, and drafts a record
-in the Team Success Log Airtable base. Nothing reaches the shared Team Log until Hayden
+Team Success group tags, and #forum_teamsuccess), sorts each ask into Team Success or Personal, and drafts the Team Success ones into
+the Team Success Log Airtable base. Personal asks are listed in the run summary, not logged
+(where they should live is undecided). Nothing reaches the shared Team Log until Hayden
 ticks Approved.
 
 ## Where things live
@@ -29,4 +30,3 @@ ticks Approved.
    - Views on Requests:
      - **Hayden Review**: personal view, filter Approved is unchecked.
      - **Team Log**: filter Approved is checked AND Type is TS; share this one.
-     - **Personal**: filter Type is Personal.
