@@ -9,7 +9,7 @@ This file is the single home for every intake and classification rule. Hayden ed
 (from Claude Code on his phone or anywhere else); each edit is a commit; the next run uses
 the new version. If a rule is not written here, it is not a rule.
 
-**Rules version:** 2026-10-21 · v1.1
+**Rules version:** 2026-10-21 · v1.2
 
 ## Hard rules (never break these)
 
@@ -32,8 +32,12 @@ the new version. If a rule is not written here, it is not a rule.
 |---|---|
 | @-mentions of Hayden | Messages containing `<@U07Q9KYU4MR>` in any channel Hayden can see |
 | DMs to Hayden | 1:1 DMs where the author is not Hayden |
-| Team Success group tags | Messages containing `<!subteam^S0AUZBR2VAL>` (the team_success group) in any channel |
-| Team Success forum | Every message and thread reply in `#forum_teamsuccess` (`C0CA48ZUV16`) |
+| Team Success group tags | New messages and thread replies in `#01_team-support` (`C0B00JQJLHZ`) that contain `<!subteam^S0AUZBR2VAL>` (the team_success group) |
+| Team Success forum | New messages and thread replies in `#forum_teamsuccess` (`C0CA48ZUV16`) |
+
+Slack search can't find group tags, so the group tag is caught by reading those two
+channels' new messages directly. A team_success tag anywhere else is caught only if it
+also @-mentions Hayden. Hayden decided that's enough (2026-10-21).
 
 - Hayden's Slack user ID: `U07Q9KYU4MR`. Workspace: pelagicworkspace.slack.com.
 - Skip: Hayden's own messages, bots, and messages Hayden only appears in as a cc with no
@@ -44,8 +48,9 @@ the new version. If a rule is not written here, it is not a rule.
 
 ## Scan window
 
-- Normal run: from (latest **Message time** in Requests − 2 hours) to now. Overlap is safe
-  because of dedupe.
+- **Only new messages.** A normal run reads only what was posted since the last run, never
+  the full history. Window: from (latest **Message time** in Requests − 2 hours) to now.
+  The small overlap is safe because of dedupe.
 - Cap: never look back more than 7 days. First run ever: 7 days.
 - Dry run: whatever window Hayden names (default: last full Mon–Fri week).
 
@@ -58,6 +63,11 @@ Before drafting, load every **Slack link** and **Slack thread** value from Reque
   and different ask; then draft it as its own record and fill **Related requests**.
 - One ask = one record. Two asks in one message = two records with the same Slack link
   and a note saying "1 of 2" / "2 of 2" (dedupe treats the pair as logged).
+- **Personal DMs are grouped:** one Personal record per DM conversation per day. List the
+  separate items in **Notes**, one per line. Slack link = the first ask of the day; later
+  asks that day in the same DM count as logged.
+- **Same ask, new place** (e.g. reposted in another channel): draft it as its own record
+  and fill **Related requests** with the earlier record's ID.
 
 ## Classification
 
@@ -69,11 +79,10 @@ match wins.
 1. **Tagged to Team Success** (the team_success group, or posted in
    `#forum_teamsuccess`) → **TS**, whatever the client. Example: a teammate's ask about
    their Fronen hours tracker, tagged to team_success, is TS.
-2. **Hayden's own account work** (Hayden is the operator) → **Personal**. Hayden's own
-   accounts: **DairyPill** (Dairy Pill), **Little Saints**, **Fronen**. An ask of Hayden
-   about one of these, outside the TS sources above, is his own work.
-3. **Anything asking Hayden as TS for a resource** → **TS**.
-4. **Everything else that is an ask of Hayden** → **Personal**.
+2. **Hayden's own account work on his three accounts** → **Personal**. These are the only
+   Personal accounts: **DairyPill** (Dairy Pill), **Little Saints**, **Fronen**.
+3. **Everything else** → **TS**. That includes work Hayden does himself on any other
+   account (e.g. Nemah, SunPowder, Rosy Soil, Roostys, Lineage cover).
 
 Never discard. When unsure between TS and Personal, pick the best fit and say why in
 **Claude notes**.
@@ -109,11 +118,18 @@ message gives nothing to go on, and say what's missing in **Claude notes**.
   - Ad-hoc "someone who has done it" = **Information**, not Advisor.
   - Capacity = more hours from same people; Staffing = a different person.
 - **Root cause:** one of the four. "DK referral" is never a root cause (use Needs help).
+  Leave it blank on Personal records, and on routine adds (hours tracker, PelOS, vault
+  access) where none of the four fits.
 - **Response:** what TS has done *so far* as seen in Slack (often blank on a fresh ask).
   Fill only from evidence in the thread.
 - **Routed to:** the route from the routing map for this Resource required, by role. Hard
-  stop: Training → Training & Education. Access → People Ops. Direction → CML, then
-  services exec. Capacity / Staffing / Leadership / Advisor → leave blank (route TBD).
+  stop: Training → Training & Education. Direction → CML, then services exec. Capacity /
+  Staffing / Leadership / Advisor / Analysis → leave blank (route TBD).
+  - Access: hours tracker, capacity dashboard and PelOS adds → **Systems**. 1Password
+    vaults and other account access → **People Ops**.
+- **Analysis** (Resource required, Person group): "investigate this for me" / "confirm
+  these numbers" asks, where someone needs TS to do the digging rather than point to a
+  resource.
 - **Unblocked date:** only if the thread shows it was resolved. A workaround counts as the
   unblock.
 - **Lasting fix / status, Resource link, Workflow maturity, Related requests, TS time
@@ -150,6 +166,8 @@ when Hayden says so for that row.
 The value lists below are copied from the Team Success space in the Pelagic Brain (owner:
 Hayden). Versions copied: request model v1.4, resource required v1.2, root causes v1,
 responses v1.1, routing map v0.
+- **Ahead of the Brain (update the Brain pages to match):** "Analysis" added to Resource
+  required (Person group); hours-tracker / PelOS access routes to Systems (2026-10-21).
 - At the start of each run, check those pages' versions. If any changed, finish the run on
   the current lists and log one Rule Changes row: "Brain list X changed (vA → vB); update
   the intake lists and the Airtable choices."
@@ -193,7 +211,7 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
   "resource_group": ["Thing", "Person"],
   "resource_required": {
     "Thing": ["Tool", "Training", "Information", "Process", "Workflow", "Access"],
-    "Person": ["Capacity / hours", "Staffing", "Leadership", "Advisor", "Direction / clarity"]
+    "Person": ["Capacity / hours", "Staffing", "Leadership", "Advisor", "Direction / clarity", "Analysis"]
   },
   "root_cause": ["Technically complex", "Poor visibility", "Insufficient resource", "Compliance"],
   "response": ["Answered", "Fixed directly", "Routed", "Created resource", "Mapped resource", "No action"],
@@ -223,3 +241,9 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
 - 2026-10-21 · v1.1: team_success group confirmed (S0AUZBR2VAL). Added #forum_teamsuccess
   as a source. Type rule is now "whose work is it": tags to TS are TS even for DairyPill,
   Little Saints or Fronen; Hayden's own work on those accounts is Personal.
+- 2026-10-21 · v1.2 from the first dry run (Oct 12–16): only DairyPill, Little Saints and
+  Fronen are Personal, everything else TS. Group tags read from #01_team-support and
+  #forum_teamsuccess, new messages only. Personal DMs grouped per conversation per day.
+  Hours-tracker / PelOS access → Systems, vaults → People Ops. Added "Analysis" to
+  Resource required. Root cause blank on Personal and routine adds. Same ask in a new
+  place → its own record, linked via Related requests.

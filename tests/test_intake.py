@@ -36,7 +36,7 @@ class ListsMatchRequestModel(unittest.TestCase):
 
     def test_resource_required_counts(self):
         self.assertEqual(len(LISTS["resource_required"]["Thing"]), 6)
-        self.assertEqual(len(LISTS["resource_required"]["Person"]), 5)
+        self.assertEqual(len(LISTS["resource_required"]["Person"]), 6)
 
     def test_each_resource_in_exactly_one_group(self):
         values = resource_required_values(LISTS)
