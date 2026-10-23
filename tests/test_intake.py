@@ -94,6 +94,16 @@ class Validation(unittest.TestCase):
     def test_message_is_required(self):
         self.assertIn("missing Message", validate_draft(draft(Message=""), LISTS, set()))
 
+    def test_scrap_needs_a_reason(self):
+        p = validate_draft(draft(Scrap=True), LISTS, set())
+        self.assertIn("Scrap and Scrap reason must both be filled or both blank", p)
+        ok = draft(Scrap=True, **{"Scrap reason": "Hours tracking / client add / milestone error"})
+        self.assertEqual(validate_draft(ok, LISTS, set()), [])
+
+    def test_scrap_reason_from_list(self):
+        p = validate_draft(draft(Scrap=True, **{"Scrap reason": "Boring"}), LISTS, set())
+        self.assertTrue(any("not in the list" in x for x in p))
+
     def test_approved_is_refused(self):
         self.assertIn("drafts must not set Approved", validate_draft(draft(Approved=True), LISTS, set()))
 

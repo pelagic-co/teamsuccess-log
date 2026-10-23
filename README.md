@@ -31,5 +31,8 @@ Hayden ticks Approved.
 5. Finish by hand (Airtable doesn't let Claude make these):
    - **Checks** formula field on Requests (the builder prints the formula to paste).
    - Views on Requests:
-     - **Hayden**: personal view (not collaborative), filter Approved is unchecked.
-     - **Team Log**: filter Approved is checked AND Type is TS; share this one.
+     - **Hayden**: personal view (not collaborative), filter Approved is unchecked AND
+       Scrap is unchecked.
+     - **Scrap**: personal view, filter Scrap is checked.
+     - **Team Log**: filter Approved is checked AND Type is TS AND Scrap is unchecked; share
+       this one.

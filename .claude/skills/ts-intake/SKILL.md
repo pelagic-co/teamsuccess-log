@@ -9,7 +9,7 @@ This file is the single home for every intake and classification rule. Hayden ed
 (from Claude Code on his phone or anywhere else); each edit is a commit; the next run uses
 the new version. If a rule is not written here, it is not a rule.
 
-**Rules version:** 2026-10-23 · v1.6
+**Rules version:** 2026-10-23 · v1.7
 
 ## Hard rules (never break these)
 
@@ -101,6 +101,20 @@ TS draft is in front of Hayden to fix; a wrong Personal call never reaches Airta
 **Personal → skip.** Don't draft it. Add it to the run summary as one line: the ask in a
 few words, the client, and the Slack link.
 
+### Scrap
+
+Some TS asks are routine and don't belong in Hayden's review. Still draft them in full
+(Type TS, Request ID, every field), but tick **Scrap** and set **Scrap reason**. Scrapped
+records show only in the Scrap view, never in Hayden's view or the Team Log. Reasons:
+
+- **Hours tracking / client add / milestone error:** someone asks to be added to a
+  client or project in their hours tracker or capacity dashboard (in Airtable), asks a
+  question about hours tracking, or reports hours or milestones not counting or showing
+  under the wrong client. Not this: "Capacity" the 3PL and its portal (VAS, kitting,
+  relabeling orders), which is client work.
+
+When unsure, don't scrap; say in **Claude notes** that it might be scrap.
+
 ### Filling the fields
 
 Fill every field you can on each TS draft. Leave a field blank rather than guess when the
@@ -170,6 +184,7 @@ message gives nothing to go on, and say what's missing in **Claude notes**.
   anything assumed or missing.
 - **Original draft:** a copy of every label you set, as `Field: value` lines. Never shown
   to the team; it's how a later run sees what Hayden changed.
+- **Scrap / Scrap reason:** both set or both blank. See Scrap.
 - **Approved:** never set.
 
 ## Rule-change loop
@@ -247,7 +262,8 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
   "workflow_maturity": ["W0", "W1", "W2", "W3", "W4", "W5"],
   "status": ["Open", "In progress", "Done", "Not an ask"],
   "rule_change_status": ["Open", "Accepted", "Rejected"],
-  "personal_clients": ["DairyPill", "Little Saints", "Fronen"]
+  "personal_clients": ["DairyPill", "Little Saints", "Fronen"],
+  "scrap_reason": ["Hours tracking / client add / milestone error"]
 }
 ```
 
@@ -290,3 +306,6 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
 - 2026-10-23 · v1.6: the run moves to every night at 12am Eastern and reads up to the day
   before yesterday, so each ask still gets a full working day to be resolved. Message
   rule now covers group tags, @here, links and shared messages.
+- 2026-10-23 · v1.7: new **Scrap** checkbox and **Scrap reason** dropdown. Hours-tracker
+  and capacity-dashboard adds, hours-tracking questions and milestone errors are drafted
+  with Scrap ticked, so they show only in the Scrap view. Existing ones were back-filled.

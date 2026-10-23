@@ -115,6 +115,10 @@ def validate_draft(draft, lists, known_links):
             problems.append(str(e))
     if bool(draft.get("Needs help")) != bool(draft.get("Needs help party")):
         problems.append("Needs help and Needs help party must both be filled or both blank")
+    if "Scrap" in draft and not isinstance(draft["Scrap"], bool):
+        problems.append("Scrap must be true or false")
+    if bool(draft.get("Scrap")) != bool(draft.get("Scrap reason")):
+        problems.append("Scrap and Scrap reason must both be filled or both blank")
     if draft.get("Type") == "TS" and not TS_ID.match(draft.get("Request ID") or ""):
         problems.append("TS draft needs a Request ID like TS-0008")
     if draft.get("Type") == "Personal":
