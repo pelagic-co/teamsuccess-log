@@ -1,6 +1,6 @@
 ---
 name: ts-intake
-description: Team Success Slack intake. Scan Hayden's Slack (mentions, DMs, Team Success group tags, #forum_teamsuccess), classify each ask as Team Success or Personal, and draft the Team Success ones into the Team Success Log Airtable base for Hayden's review (Personal asks are listed in the run summary, not logged). Also handles "show open rule changes". Use for the hourly intake run, a manual dry run, or any question about intake rules.
+description: Team Success Slack intake. Scan Hayden's Slack (mentions, DMs, Team Success group tags, #forum_teamsuccess), classify each ask as Team Success or Personal, and draft the Team Success ones into the Team Success Log Airtable base for Hayden's review (Personal asks are listed in the run summary, not logged). Also handles "show open rule changes". Use for the daily intake run, a manual dry run, or any question about intake rules.
 ---
 
 # Team Success Slack intake
@@ -9,7 +9,7 @@ This file is the single home for every intake and classification rule. Hayden ed
 (from Claude Code on his phone or anywhere else); each edit is a commit; the next run uses
 the new version. If a rule is not written here, it is not a rule.
 
-**Rules version:** 2026-10-23 · v1.4
+**Rules version:** 2026-10-23 · v1.5
 
 ## Hard rules (never break these)
 
@@ -51,11 +51,19 @@ also @-mentions Hayden. Hayden decided that's enough (2026-10-21).
 
 ## Scan window
 
-- **Only new messages.** A normal run reads only what was posted since the last run, never
-  the full history. Window: from (latest **Message time** in Requests − 2 hours) to now.
-  The small overlap is safe because of dedupe.
-- Cap: never look back more than 7 days. First run ever: 7 days.
-- Dry run: whatever window Hayden names (default: last full Mon–Fri week).
+- **Whole past days, never today.** The daily run reads asks posted on whole Eastern days,
+  from the day after the last run's last day up to yesterday. Today's messages wait for
+  tomorrow's run, so every ask has had at least a day for a reply or fix to show up.
+- `python3 scripts/airtable.py logged` gives the days to read (`read_slack_from` /
+  `read_slack_to`). Use exactly those; never work them out yourself. They come from the
+  **Runs** table, so a missed day (or Monday's Friday-to-Sunday) is picked up as backlog
+  automatically, with no limit on how far back.
+- `nothing_due: true` means the days are already covered (e.g. a second run the same day):
+  stop and say so.
+- Read each ask's whole thread (or DM conversation) up to the moment of the run, not just
+  up to the end of the day, to see what happened since.
+- Dry run: whatever days Hayden names (default: last full Mon–Fri week). A dry run never
+  logs a run.
 
 ## Dedupe (skip anything already logged)
 
@@ -66,8 +74,8 @@ Before drafting, load every **Slack link** and **Slack thread** value from Reque
   and different ask; then draft it as its own record and fill **Related requests**.
 - One ask = one record. Two asks in one message = two records with the same Slack link
   and a note saying "1 of 2" / "2 of 2" (dedupe treats the pair as logged).
-- **Personal asks are never logged**, so dedupe can't skip them. Because of the 2-hour
-  overlap, the same Personal ask may appear in two run summaries. That's expected.
+- **Personal asks are never logged**, so dedupe can't skip them. Runs read separate days,
+  so each Personal ask appears in one run summary only.
 - **Same ask, new place** (e.g. reposted in another channel): draft it as its own record
   and fill **Related requests** with the earlier record's ID.
 
@@ -135,8 +143,8 @@ message gives nothing to go on, and say what's missing in **Claude notes**.
 - **Root cause:** one of the four. "DK referral" is never a root cause (use Needs help).
   Leave it blank on routine adds (hours tracker, PelOS, vault access) where none of the
   four fits.
-- **Response:** what TS has done *so far* as seen in Slack (often blank on a fresh ask).
-  Fill only from evidence in the thread.
+- **Response:** what TS has done so far, as seen in the thread up to the moment of the
+  run. Fill only from evidence in the thread.
 - **Routed to:** the route from the routing map for this Resource required, by role. Hard
   stop: Training → Training & Education. Direction → CML, then services exec. Capacity /
   Staffing / Leadership / Advisor / Analysis → leave blank (route TBD).
@@ -145,12 +153,13 @@ message gives nothing to go on, and say what's missing in **Claude notes**.
 - **Analysis** (Resource required, Person group): "investigate this for me" / "confirm
   these numbers" asks, where someone needs TS to do the digging rather than point to a
   resource.
-- **Unblocked date:** only if the thread shows it was resolved. A workaround counts as the
-  unblock.
+- **Unblocked date:** the day the thread shows it was resolved, if it was resolved by the
+  time of the run. A workaround counts as the unblock.
 - **Lasting fix / status, Resource link, Workflow maturity, Related requests, TS time
   spent:** only from evidence. Fill **Related requests** when you see a repeat of an
   existing record (same problem, same tool, same client).
-- **Status:** "Open" unless the thread shows it's done.
+- **Status:** "Done" if the thread shows it was resolved by the time of the run, "In
+  progress" if someone is visibly working on it, otherwise "Open".
 - **Message time:** the Slack message timestamp.
 - **Slack link:** the message permalink. **Slack thread:** the thread root permalink
   (same as Slack link if it's not in a thread).
@@ -241,10 +250,14 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
 
 ## Running
 
-- **Hourly run (scheduled):** follow Sources → Scan window → Dedupe → Classification →
-  write drafts with `python3 scripts/airtable.py create` → Rule-change loop. End with a
-  short summary: drafts created, skipped as already logged, rule changes logged, then
-  "Personal (not logged):" with one line per Personal ask (or "none"). Nothing else.
+- **Daily run (scheduled, weekdays around 5pm Eastern):** follow Sources → Scan window →
+  Dedupe → Classification → write drafts with `python3 scripts/airtable.py create` →
+  Rule-change loop → log the run with `python3 scripts/airtable.py finish-run run.json`
+  (the days read and the counts; never any Personal details). Log the run only after the
+  drafts are written; if anything fails, don't log it, so the next run reads those days
+  again. End with a short summary: the Slack days read, drafts created (and how many
+  already resolved), skipped as already logged, rule changes logged, then "Personal (not
+  logged):" with one line per Personal ask (or "none"). Nothing else.
 - **Dry run:** same, but write nothing to Airtable. Put the drafts and the Personal list
   in a review file for Hayden instead.
 - Airtable access needs `AIRTABLE_TOKEN` and `AIRTABLE_BASE_ID` set in the environment.
@@ -267,3 +280,7 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
   sets Personal by hand); when unsure, pick TS. Personal DM grouping removed.
 - 2026-10-23 · v1.4: **Summary** is now Claude's one-line summary of the ask, not the
   requester's words. New **Message** field holds the Slack message text word for word.
+- 2026-10-23 · v1.5: one run a day (weekdays, about 5pm Eastern) instead of hourly. Each
+  run reads whole past days up to yesterday, plus any backlog, so a reply or fix has had
+  time to show up; Response, Unblocked date and Status use the thread as of the run. New
+  **Runs** table records the days each run read.

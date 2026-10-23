@@ -4,6 +4,7 @@ from lists import load_lists, resource_required_values
 
 REQUESTS = "Requests"
 RULE_CHANGES = "Rule Changes"
+RUNS = "Runs"
 
 
 def _select(name, choices, description=""):
@@ -129,6 +130,22 @@ def rule_changes_fields(lists):
     ]
 
 
+def _count(name, description=""):
+    return {"name": name, "type": "number", "description": description, "options": {"precision": 0}}
+
+
+def runs_fields():
+    return [
+        _text("Run", "Date the daily run happened (Eastern)."),
+        _date("Covered from", "First Slack day this run read (Eastern)."),
+        _date("Covered to", "Last Slack day this run read (Eastern). The next run starts the day after."),
+        _count("Drafts created"),
+        _count("Already logged", "Asks skipped because they were already in Requests."),
+        _count("Personal skipped", "Personal asks listed in the run summary, not logged."),
+        _count("Rule changes logged"),
+    ]
+
+
 def link_field():
     """Added after both tables exist. Airtable creates the reverse field on Requests."""
     return {"name": "Source records", "type": "multipleRecordLinks",
@@ -137,4 +154,4 @@ def link_field():
 
 def tables():
     lists = load_lists()
-    return {REQUESTS: requests_fields(lists), RULE_CHANGES: rule_changes_fields(lists)}
+    return {REQUESTS: requests_fields(lists), RULE_CHANGES: rule_changes_fields(lists), RUNS: runs_fields()}

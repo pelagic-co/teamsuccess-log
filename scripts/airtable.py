@@ -1,7 +1,8 @@
 """What an intake run is allowed to do in Airtable, and nothing more.
 
-    python3 scripts/airtable.py logged              # Slack links/threads already logged, latest message time, next TS ID
+    python3 scripts/airtable.py logged              # Slack days to read, Slack links/threads already logged, next TS ID
     python3 scripts/airtable.py create drafts.json  # create draft Requests (validated first; all or nothing)
+    python3 scripts/airtable.py finish-run run.json # log the run in Runs (only after its drafts are written)
     python3 scripts/airtable.py pending-changes     # records whose "Why I changed it" has no rule change yet
     python3 scripts/airtable.py propose change.json # create one Rule Changes row linked to its source records
     python3 scripts/airtable.py open-changes        # Rule Changes with status Open
@@ -13,14 +14,18 @@ There is deliberately no command to edit or delete a request record.
 import json
 import re
 import sys
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from airtable_api import AirtableError, Client
 from lists import group_of, load_lists
-from schema import REQUESTS, RULE_CHANGES, requests_fields
+from schema import REQUESTS, RULE_CHANGES, RUNS, requests_fields
 
 BACKFILL_LAST_ID = 7  # TS-0007 is the last row backfilled into the Google Sheet request log
 TS_ID = re.compile(r"^TS-(\d{4,})$")
 SLACK_LINK = re.compile(r"^https://[a-z0-9-]+\.slack\.com/archives/[A-Z0-9]+/p\d+")
+EASTERN = ZoneInfo("America/New_York")
+FIRST_RUN_DAYS = 7  # nothing logged at all: read the last week
 REQUIRED = ["Summary", "Message", "Type", "Slack link", "Slack thread", "Message time", "Claude notes", "Original draft"]
 
 
@@ -31,6 +36,47 @@ def next_ts_number(ids):
         if m:
             highest = max(highest, int(m.group(1)))
     return highest + 1
+
+
+def eastern_day(timestamp):
+    """The Eastern calendar day of an Airtable timestamp like 2026-10-21T23:56:22.000Z."""
+    return datetime.fromisoformat(timestamp.replace("Z", "+00:00")).astimezone(EASTERN).date()
+
+
+def scan_window(today, last_covered_to=None, latest_message_time=None):
+    """The Slack days a run reads: whole Eastern days, from the day after the last run's
+    last day up to yesterday. Today is never read, so every ask has had at least a day for
+    a reply or fix to show up in its thread. Returns (from, to), or None if nothing is due.
+
+    Before any run is logged, start on the day of the latest logged message (re-reading
+    that day is safe because of dedupe), or a week back if nothing is logged at all."""
+    to = today - timedelta(days=1)
+    if last_covered_to:
+        start = last_covered_to + timedelta(days=1)
+    elif latest_message_time:
+        start = eastern_day(latest_message_time)
+    else:
+        start = today - timedelta(days=FIRST_RUN_DAYS)
+    return (start, to) if start <= to else None
+
+
+RUN_COUNTS = ("Drafts created", "Already logged", "Personal skipped", "Rule changes logged")
+
+
+def validate_run(run, window):
+    """Returns a list of problems. A run may only log exactly the Slack days that were due."""
+    if window is None:
+        return ["no Slack days were due, so there is no run to log"]
+    problems = []
+    for key, day in (("Covered from", window[0]), ("Covered to", window[1])):
+        if run.get(key) != day.isoformat():
+            problems.append(f"{key} must be {day.isoformat()}")
+    for key in RUN_COUNTS:
+        value = run.get(key)
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            problems.append(f"{key} must be a whole number")
+    problems += [f"unknown field {k!r}" for k in sorted(set(run) - {"Covered from", "Covered to", *RUN_COUNTS})]
+    return problems
 
 
 def validate_draft(draft, lists, known_links):
@@ -79,16 +125,43 @@ def validate_draft(draft, lists, known_links):
     return problems
 
 
+def today_eastern():
+    return datetime.now(EASTERN).date()
+
+
+def current_window(client, today):
+    runs = client.list_records(RUNS, fields=["Covered to"])
+    covered = sorted(r["fields"]["Covered to"] for r in runs if r["fields"].get("Covered to"))
+    last = date.fromisoformat(covered[-1]) if covered else None
+    times = sorted(r["fields"]["Message time"] for r in client.list_records(REQUESTS, fields=["Message time"])
+                   if r["fields"].get("Message time"))
+    return scan_window(today, last, times[-1] if times else None)
+
+
 def cmd_logged(client):
-    rows = client.list_records(REQUESTS, fields=["Slack link", "Slack thread", "Message time", "Request ID"])
+    rows = client.list_records(REQUESTS, fields=["Slack link", "Slack thread", "Request ID"])
     f = [r["fields"] for r in rows]
-    times = sorted(x["Message time"] for x in f if x.get("Message time"))
+    window = current_window(client, today_eastern())
     print(json.dumps({
+        "read_slack_from": window[0].isoformat() if window else None,
+        "read_slack_to": window[1].isoformat() if window else None,
+        "nothing_due": window is None,
         "slack_links": sorted({x["Slack link"] for x in f if x.get("Slack link")}),
         "slack_threads": sorted({x["Slack thread"] for x in f if x.get("Slack thread")}),
-        "latest_message_time": times[-1] if times else None,
         "next_request_id": f"TS-{next_ts_number(x.get('Request ID') for x in f):04d}",
     }, indent=2))
+
+
+def cmd_finish_run(client, path):
+    run = json.load(open(path, encoding="utf-8"))
+    today = today_eastern()
+    problems = validate_run(run, current_window(client, today))
+    if problems:
+        print("Run not logged. Fix these first:\n" + "\n".join(problems), file=sys.stderr)
+        return 1
+    client.create_records(RUNS, [dict(run, Run=today.isoformat())])
+    print(f"logged run {today.isoformat()} (Slack {run['Covered from']} to {run['Covered to']})")
+    return 0
 
 
 def cmd_create(client, path):
@@ -167,6 +240,8 @@ def main(argv):
             cmd_logged(client)
         elif cmd == "create" and len(args) == 1:
             return cmd_create(client, args[0])
+        elif cmd == "finish-run" and len(args) == 1:
+            return cmd_finish_run(client, args[0])
         elif cmd == "pending-changes":
             cmd_pending_changes(client)
         elif cmd == "propose" and len(args) == 1:

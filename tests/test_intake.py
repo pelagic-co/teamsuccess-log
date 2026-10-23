@@ -4,7 +4,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from airtable import next_ts_number, validate_draft  # noqa: E402
+from datetime import date  # noqa: E402
+
+from airtable import eastern_day, next_ts_number, scan_window, validate_draft, validate_run  # noqa: E402
 from build_base import build  # noqa: E402
 from lists import group_of, load_lists, resource_required_values  # noqa: E402
 from schema import REQUESTS, RULE_CHANGES, checks_formula, requests_fields, tables  # noqa: E402
@@ -153,6 +155,9 @@ class FakeBase:
     def describe_field(self, table_id, field_id, description):
         self.calls.append(("describe", table_id, field_id, description))
 
+    def create_table(self, name, fields):
+        self.calls.append(("create table", name))
+
 
 class BuildExistingBase(unittest.TestCase):
     def test_adds_message_and_updates_summary_description(self):
@@ -162,8 +167,63 @@ class BuildExistingBase(unittest.TestCase):
         self.assertEqual(base.calls, [
             ("describe", "tblRQ", summary_id, "Field 7. One line, in Claude's words: what is being asked for."),
             ("create", "tblRQ", "Message"),
+            ("create table", "Runs"),
         ])
         self.assertIn("added field Requests.Message", report)
+
+
+TUE, WED, THU, FRI, MON = (date(2026, 10, d) for d in (20, 21, 22, 23, 26))
+
+
+class DailyWindow(unittest.TestCase):
+    """A run reads whole Eastern days, from the day after the last run's last day to yesterday."""
+
+    def test_normal_day_reads_yesterday(self):
+        self.assertEqual(scan_window(FRI, last_covered_to=WED), (THU, THU))
+
+    def test_monday_catches_up_on_friday_and_weekend(self):
+        self.assertEqual(scan_window(MON, last_covered_to=THU), (FRI, date(2026, 10, 25)))
+
+    def test_missed_runs_become_backlog(self):
+        self.assertEqual(scan_window(MON, last_covered_to=TUE), (WED, date(2026, 10, 25)))
+
+    def test_second_run_same_day_has_nothing_due(self):
+        self.assertIsNone(scan_window(FRI, last_covered_to=THU))
+
+    def test_first_run_starts_on_day_of_latest_logged_message(self):
+        # 23:56 UTC on the 21st is 7:56pm Eastern on the 21st.
+        self.assertEqual(eastern_day("2026-10-21T23:56:22.000Z"), WED)
+        self.assertEqual(eastern_day("2026-10-22T02:00:00.000Z"), WED)
+        self.assertEqual(scan_window(FRI, latest_message_time="2026-10-21T23:56:22.000Z"), (WED, THU))
+
+    def test_nothing_logged_reads_last_week(self):
+        self.assertEqual(scan_window(FRI), (date(2026, 10, 16), THU))
+
+    def test_runs_win_over_message_times(self):
+        self.assertEqual(scan_window(FRI, WED, "2026-10-19T15:00:00.000Z"), (THU, THU))
+
+
+class RunLog(unittest.TestCase):
+    RUN = {"Covered from": "2026-10-22", "Covered to": "2026-10-22", "Drafts created": 3,
+           "Already logged": 1, "Personal skipped": 2, "Rule changes logged": 0}
+
+    def test_good_run(self):
+        self.assertEqual(validate_run(self.RUN, (THU, THU)), [])
+
+    def test_dates_must_match_what_was_due(self):
+        p = validate_run(dict(self.RUN, **{"Covered from": "2026-10-21"}), (THU, THU))
+        self.assertIn("Covered from must be 2026-10-22", p)
+
+    def test_counts_must_be_whole_numbers(self):
+        self.assertIn("Drafts created must be a whole number",
+                      validate_run(dict(self.RUN, **{"Drafts created": "3"}), (THU, THU)))
+
+    def test_no_personal_details(self):
+        self.assertIn("unknown field 'Personal asks'",
+                      validate_run(dict(self.RUN, **{"Personal asks": "DairyPill thing"}), (THU, THU)))
+
+    def test_nothing_due(self):
+        self.assertEqual(validate_run(self.RUN, None), ["no Slack days were due, so there is no run to log"])
 
 
 class RequestIds(unittest.TestCase):

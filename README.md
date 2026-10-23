@@ -1,10 +1,12 @@
 # Team Success Log
 
-Every hour on weekdays, 9am–5pm Eastern, Claude reads Hayden's Slack (mentions, DMs,
-Team Success group tags, and #forum_teamsuccess), sorts each ask into Team Success or Personal, and drafts the Team Success ones into
-the Team Success Log Airtable base. Personal asks are listed in the run summary, not logged
-(where they should live is undecided). Nothing reaches the shared Team Log until Hayden
-ticks Approved.
+Every weekday around 5pm Eastern, Claude reads Hayden's Slack (mentions, DMs, Team Success
+group tags, and #forum_teamsuccess) for the previous day, plus any days not yet read (on
+Monday, Friday to Sunday). Waiting a day means Claude can see whether an ask was already
+resolved. It sorts each ask into Team Success or Personal and drafts the Team Success ones
+into the Team Success Log Airtable base. Personal asks are listed in the run summary, not
+logged (where they should live is undecided). Nothing reaches the shared Team Log until
+Hayden ticks Approved.
 
 ## Where things live
 
@@ -12,7 +14,7 @@ ticks Approved.
 |---|---|
 | All intake and classification rules | `.claude/skills/ts-intake/SKILL.md` (edit this to change behaviour) |
 | Airtable tables and fields | `scripts/schema.py`, built by `scripts/build_base.py` |
-| What a run may do in Airtable | `scripts/airtable.py` (create drafts, log rule changes; no edit or delete) |
+| What a run may do in Airtable | `scripts/airtable.py` (create drafts, log rule changes and runs; no edit or delete) |
 | Checks | `python3 -m unittest discover -s tests` |
 | How Claude works in this repo (main branch only) | `CLAUDE.md` |
 
