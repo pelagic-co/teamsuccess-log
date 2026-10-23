@@ -31,5 +31,5 @@ Hayden ticks Approved.
 5. Finish by hand (Airtable doesn't let Claude make these):
    - **Checks** formula field on Requests (the builder prints the formula to paste).
    - Views on Requests:
-     - **Hayden Review**: personal view, filter Approved is unchecked.
+     - **Hayden**: personal view (not collaborative), filter Approved is unchecked.
      - **Team Log**: filter Approved is checked AND Type is TS; share this one.
