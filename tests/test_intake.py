@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from datetime import date  # noqa: E402
 
-from airtable import (eastern_day, latest_message_before, next_ts_number, scan_window,  # noqa: E402
+from airtable import (eastern_day, field_type_drift, latest_message_before, next_ts_number, scan_window,  # noqa: E402
                       validate_draft, validate_run)
 from build_base import build  # noqa: E402
 from lists import group_of, load_lists, resource_required_values  # noqa: E402
@@ -23,8 +23,8 @@ def draft(**over):
         "Type": "TS",
         "Request ID": "TS-0008",
         "Source": "Team Support Slack",
-        "Resource group": "Thing",
-        "Resource required": "Access",
+        "Resource group": ["Thing"],
+        "Resource required": ["Access"],
         "Root cause": "Insufficient resource",
         "Slack link": LINK,
         "Slack thread": LINK,
@@ -77,14 +77,28 @@ class Schema(unittest.TestCase):
         for fields in tables().values():
             self.assertEqual(fields[0]["type"], "singleLineText")
 
+    def test_field_type_drift(self):
+        live = [dict(f) for f in requests_fields(LISTS)]
+        self.assertEqual(field_type_drift(live, LISTS), [])
+        next(f for f in live if f["name"] == "Resource required")["type"] = "singleSelect"
+        self.assertEqual(field_type_drift(live, LISTS),
+                         ["Resource required is singleSelect in Airtable, expected multipleSelects"])
+
     def test_message_is_long_text(self):
         fields = {f["name"]: f for f in requests_fields(LISTS)}
         self.assertEqual(fields["Message"]["type"], "multilineText")
 
     def test_checks_formula_lists_values(self):
         f = checks_formula(LISTS)
-        self.assertIn("Tool|Training|Information|Process|Workflow|Access", f)
-        self.assertNotIn("{thing}", f)
+        self.assertIn("FIND('Tool', {Resource required}&'')", f)
+        self.assertIn("FIND('Analysis', {Resource required}&'')", f)
+        self.assertNotIn("{thing_any}", f)
+        self.assertNotIn("{person_any}", f)
+
+    def test_checks_formula_finds_are_unambiguous(self):
+        # The formula spots a resource by text search, so no value may sit inside another.
+        values = resource_required_values(LISTS)
+        self.assertEqual([(a, b) for a in values for b in values if a != b and a in b], [])
 
 
 class Validation(unittest.TestCase):
@@ -108,8 +122,22 @@ class Validation(unittest.TestCase):
         self.assertIn("drafts must not set Approved", validate_draft(draft(Approved=True), LISTS, set()))
 
     def test_group_mismatch(self):
-        p = validate_draft(draft(**{"Resource group": "Person"}), LISTS, set())
+        p = validate_draft(draft(**{"Resource group": ["Person"]}), LISTS, set())
         self.assertIn("Resource group does not match Resource required", p)
+
+    def test_two_resources_need_both_groups(self):
+        two = {"Resource required": ["Information", "Capacity / hours"]}
+        self.assertIn("Resource group does not match Resource required",
+                      validate_draft(draft(**two, **{"Resource group": ["Thing"]}), LISTS, set()))
+        self.assertEqual(validate_draft(draft(**two, **{"Resource group": ["Thing", "Person"]}), LISTS, set()), [])
+
+    def test_group_without_resource(self):
+        p = validate_draft(draft(**{"Resource required": None}), LISTS, set())
+        self.assertIn("Resource group does not match Resource required", p)
+
+    def test_resources_must_be_a_list(self):
+        p = validate_draft(draft(**{"Resource required": "Access"}), LISTS, set())
+        self.assertIn("Resource required must be a list", p)
 
     def test_needs_help_pair(self):
         p = validate_draft(draft(**{"Needs help": "Natasha"}), LISTS, set())

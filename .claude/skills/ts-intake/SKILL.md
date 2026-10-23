@@ -9,7 +9,7 @@ This file is the single home for every intake and classification rule. Hayden ed
 (from Claude Code on his phone or anywhere else); each edit is a commit; the next run uses
 the new version. If a rule is not written here, it is not a rule.
 
-**Rules version:** 2026-10-23 · v1.7
+**Rules version:** 2026-10-23 · v1.8
 
 ## Hard rules (never break these)
 
@@ -151,8 +151,10 @@ message gives nothing to go on, and say what's missing in **Claude notes**.
   filled or both blank.
 - **Client:** the client brand, or "Internal".
 - **Urgency:** Blocking client work · Blocking internal work · Not blocking.
-- **Resource group + Resource required:** must match (see Lists). Pick the group first.
-  Key distinctions:
+- **Resource required:** every resource the ask genuinely needs (usually one; add more
+  only when the ask clearly needs more than one kind of help). **Resource group:**
+  exactly the groups of those resources (see Lists): Information + Capacity / hours →
+  Thing + Person. Key distinctions:
   - Documented how-to = **Information**, not Process.
   - Time taken alone = **Tool**, not Workflow.
   - Ad-hoc "someone who has done it" = **Information**, not Advisor.
@@ -162,7 +164,8 @@ message gives nothing to go on, and say what's missing in **Claude notes**.
   four fits.
 - **Response:** what TS has done so far, as seen in the thread up to the moment of the
   run. Fill only from evidence in the thread.
-- **Routed to:** the route from the routing map for this Resource required, by role. Hard
+- **Routed to:** the route from the routing map for each Resource required, by role,
+  separated by commas when there are several (skip the ones whose route is TBD). Hard
   stop: Training → Training & Education. Direction → CML, then services exec. Capacity /
   Staffing / Leadership / Advisor / Analysis → leave blank (route TBD).
   - Access: hours tracker, capacity dashboard and PelOS adds → **Systems**. 1Password
@@ -210,6 +213,7 @@ Hayden). Versions copied: request model v1.4, resource required v1.2, root cause
 responses v1.1, routing map v0.
 - **Ahead of the Brain (update the Brain pages to match):** "Analysis" added to Resource
   required (Person group); hours-tracker / PelOS access routes to Systems (2026-10-21).
+  Resource required and Resource group are multi-select (2026-10-23).
 - At the start of each run, check those pages' versions. If any changed, finish the run on
   the current lists and log one Rule Changes row: "Brain list X changed (vA → vB); update
   the intake lists and the Airtable choices."
@@ -309,3 +313,6 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
 - 2026-10-23 · v1.7: new **Scrap** checkbox and **Scrap reason** dropdown. Hours-tracker
   and capacity-dashboard adds, hours-tracking questions and milestone errors are drafted
   with Scrap ticked, so they show only in the Scrap view. Existing ones were back-filled.
+- 2026-10-23 · v1.8: **Resource required** and **Resource group** are multi-select. Pick
+  every resource the ask needs; Resource group holds exactly their groups. Routed to lists
+  one route per resource.

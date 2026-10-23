@@ -107,9 +107,10 @@ def validate_draft(draft, lists, known_links):
                 problems.append(f"{name} must be a list")
             else:
                 problems += [f"{name}={v!r} is not in the list" for v in value if v not in allowed]
-    if draft.get("Resource required"):
+    required, groups = draft.get("Resource required") or [], draft.get("Resource group") or []
+    if isinstance(required, list) and isinstance(groups, list):
         try:
-            if draft.get("Resource group") != group_of(lists, draft["Resource required"]):
+            if set(groups) != {group_of(lists, r) for r in required}:
                 problems.append("Resource group does not match Resource required")
         except ValueError as e:
             problems.append(str(e))
@@ -177,9 +178,21 @@ def cmd_finish_run(client, path):
     return 0
 
 
+def field_type_drift(live_fields, lists):
+    """Fields whose type in Airtable differs from schema.py; writing drafts then would fail."""
+    live = {f["name"]: f["type"] for f in live_fields}
+    return [f"{f['name']} is {live[f['name']]} in Airtable, expected {f['type']}"
+            for f in requests_fields(lists) if f["name"] in live and live[f["name"]] != f["type"]]
+
+
 def cmd_create(client, path):
     lists = load_lists()
     drafts = json.load(open(path, encoding="utf-8"))
+    live = {t["name"]: t for t in client.tables()}[REQUESTS]["fields"]
+    drift = field_type_drift(live, lists)
+    if drift:
+        print("Nothing written. Change these field types in Airtable first:\n" + "\n".join(drift), file=sys.stderr)
+        return 1
     rows = client.list_records(REQUESTS, fields=["Slack link", "Request ID"])
     known = {r["fields"].get("Slack link") for r in rows}
     used_ids = {r["fields"].get("Request ID") for r in rows}

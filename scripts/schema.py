@@ -56,11 +56,12 @@ def _url(name, description=""):
 
 CHECKS_FORMULA = (
     "TRIM(CONCATENATE("
-    "IF(AND({Resource required}, {Resource group}, "
-    "OR("
-    "AND({Resource group}='Thing', FIND({Resource required}, '{thing}')=0), "
-    "AND({Resource group}='Person', FIND({Resource required}, '{person}')=0)"
-    ")), 'Resource group does not match Resource required. ', ''), "
+    "IF(OR("
+    "AND({thing_any}, NOT(FIND('Thing', {Resource group}&''))), "
+    "AND(NOT({thing_any}), FIND('Thing', {Resource group}&'')), "
+    "AND({person_any}, NOT(FIND('Person', {Resource group}&''))), "
+    "AND(NOT({person_any}), FIND('Person', {Resource group}&''))"
+    "), 'Resource group does not match Resource required. ', ''), "
     "IF(OR(AND({Needs help}, NOT({Needs help party})), AND({Needs help party}, NOT({Needs help}))), "
     "'Needs help and Needs help party must both be filled or both blank. ', ''), "
     "IF(AND({Type}='TS', NOT({Request ID})), 'TS record has no Request ID. ', '')"
@@ -83,8 +84,9 @@ def requests_fields(lists):
         _select("Needs help party", lists["party"], "Field 5b. Filled only with Needs help."),
         _text("Client", "Field 6. Client, or Internal."),
         _select("Urgency", lists["urgency"], "Field 8."),
-        _select("Resource group", lists["resource_group"], "Field 9a. Must match Resource required."),
-        _select("Resource required", resource_required_values(lists), "Field 9."),
+        _multi("Resource group", lists["resource_group"],
+               "Field 9a. Exactly the groups of the resources in Resource required."),
+        _multi("Resource required", resource_required_values(lists), "Field 9. Every resource the ask needs."),
         _select("Root cause", lists["root_cause"], "Field 10."),
         _multi("Response", lists["response"], "Field 11."),
         _text("Routed to", "Field 12. Party or person."),
@@ -119,9 +121,10 @@ def requests_fields(lists):
 
 def checks_formula(lists):
     """Airtable's API can't create formula fields, so Hayden pastes this into a "Checks" field by hand."""
-    thing = "|".join(lists["resource_required"]["Thing"])
-    person = "|".join(lists["resource_required"]["Person"])
-    return CHECKS_FORMULA.replace("{thing}", thing).replace("{person}", person)
+    def any_of(group):
+        finds = ", ".join(f"FIND('{v}', {{Resource required}}&'')" for v in lists["resource_required"][group])
+        return f"OR({finds})"
+    return CHECKS_FORMULA.replace("{thing_any}", any_of("Thing")).replace("{person_any}", any_of("Person"))
 
 
 def rule_changes_fields(lists):
