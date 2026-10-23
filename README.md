@@ -14,6 +14,7 @@ ticks Approved.
 | Airtable tables and fields | `scripts/schema.py`, built by `scripts/build_base.py` |
 | What a run may do in Airtable | `scripts/airtable.py` (create drafts, log rule changes; no edit or delete) |
 | Checks | `python3 -m unittest discover -s tests` |
+| How Claude works in this repo (main branch only) | `CLAUDE.md` |
 
 ## One-time Airtable setup (Hayden, about 10 minutes)
 
