@@ -209,11 +209,9 @@ rejects: set **Rejected**. Accept/reject only when Hayden says so for that row.
 ## Keeping lists in step with the Brain
 
 The value lists below are copied from the Team Success space in the Pelagic Brain (owner:
-Hayden). Versions copied: request model v1.4, resource required v1.2, root causes v1,
-responses v1.1, routing map v0.
-- **Ahead of the Brain (update the Brain pages to match):** "Analysis" added to Resource
-  required (Person group); hours-tracker / PelOS access routes to Systems (2026-10-21).
-  Resource required and Resource group are multi-select (2026-10-23).
+Hayden). Versions copied: request model v1.5, resource required v1.3, root causes v1,
+responses v1.1, routing map v0 (last changed 2026-10-23). The Brain pages match these
+rules as of 2026-10-23.
 - At the start of each run, check those pages' versions. If any changed, finish the run on
   the current lists and log one Rule Changes row: "Brain list X changed (vA → vB); update
   the intake lists and the Airtable choices."
