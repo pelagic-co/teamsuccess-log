@@ -26,6 +26,7 @@ TS_ID = re.compile(r"^TS-(\d{4,})$")
 SLACK_LINK = re.compile(r"^https://[a-z0-9-]+\.slack\.com/archives/[A-Z0-9]+/p\d+")
 EASTERN = ZoneInfo("America/New_York")
 FIRST_RUN_DAYS = 7  # nothing logged at all: read the last week
+WAIT_DAYS = 2  # the newest day a run reads is the day before yesterday
 REQUIRED = ["Summary", "Message", "Type", "Slack link", "Slack thread", "Message time", "Claude notes", "Original draft"]
 
 
@@ -45,12 +46,13 @@ def eastern_day(timestamp):
 
 def scan_window(today, last_covered_to=None, latest_message_time=None):
     """The Slack days a run reads: whole Eastern days, from the day after the last run's
-    last day up to yesterday. Today is never read, so every ask has had at least a day for
-    a reply or fix to show up in its thread. Returns (from, to), or None if nothing is due.
+    last day up to the day before yesterday. The nightly run fires just after midnight, so
+    every ask has had at least one full working day for a reply or fix to show up in its
+    thread. Returns (from, to), or None if nothing is due.
 
     Before any run is logged, start on the day of the latest logged message (re-reading
     that day is safe because of dedupe), or a week back if nothing is logged at all."""
-    to = today - timedelta(days=1)
+    to = today - timedelta(days=WAIT_DAYS)
     if last_covered_to:
         start = last_covered_to + timedelta(days=1)
     elif latest_message_time:

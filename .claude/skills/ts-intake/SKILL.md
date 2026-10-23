@@ -1,6 +1,6 @@
 ---
 name: ts-intake
-description: Team Success Slack intake. Scan Hayden's Slack (mentions, DMs, Team Success group tags, #forum_teamsuccess), classify each ask as Team Success or Personal, and draft the Team Success ones into the Team Success Log Airtable base for Hayden's review (Personal asks are listed in the run summary, not logged). Also handles "show open rule changes". Use for the daily intake run, a manual dry run, or any question about intake rules.
+description: Team Success Slack intake. Scan Hayden's Slack (mentions, DMs, Team Success group tags, #forum_teamsuccess), classify each ask as Team Success or Personal, and draft the Team Success ones into the Team Success Log Airtable base for Hayden's review (Personal asks are listed in the run summary, not logged). Also handles "show open rule changes". Use for the nightly intake run, a manual dry run, or any question about intake rules.
 ---
 
 # Team Success Slack intake
@@ -9,7 +9,7 @@ This file is the single home for every intake and classification rule. Hayden ed
 (from Claude Code on his phone or anywhere else); each edit is a commit; the next run uses
 the new version. If a rule is not written here, it is not a rule.
 
-**Rules version:** 2026-10-23 · v1.5
+**Rules version:** 2026-10-23 · v1.6
 
 ## Hard rules (never break these)
 
@@ -51,13 +51,14 @@ also @-mentions Hayden. Hayden decided that's enough (2026-10-21).
 
 ## Scan window
 
-- **Whole past days, never today.** The daily run reads asks posted on whole Eastern days,
-  from the day after the last run's last day up to yesterday. Today's messages wait for
-  tomorrow's run, so every ask has had at least a day for a reply or fix to show up.
+- **Whole past days, one working day behind.** The run reads asks posted on whole Eastern
+  days, from the day after the last run's last day up to the day before yesterday. The
+  12am Wednesday run reads Monday, so every ask has had at least one full working day
+  for a reply or fix to show up.
 - `python3 scripts/airtable.py logged` gives the days to read (`read_slack_from` /
   `read_slack_to`). Use exactly those; never work them out yourself. They come from the
-  **Runs** table, so a missed day (or Monday's Friday-to-Sunday) is picked up as backlog
-  automatically, with no limit on how far back.
+  **Runs** table, so a missed day is picked up as backlog automatically, with no limit on
+  how far back.
 - `nothing_due: true` means the days are already covered (e.g. a second run the same day):
   stop and say so.
 - Read each ask's whole thread (or DM conversation) up to the moment of the run, not just
@@ -111,7 +112,9 @@ message gives nothing to go on, and say what's missing in **Claude notes**.
   **Requester**). Example: "Add Manukora to the hours tracker." Two asks in one message
   get one Summary each.
 - **Message:** the Slack message text, word for word. Don't trim, fix or paraphrase it;
-  only turn Slack's mention codes into names (`<@U07Q9KYU4MR>` → `@Hayden`). A thread
+  only turn Slack's codes into readable text: people → names (`<@U07Q9KYU4MR>` →
+  `@Hayden`), the group tag → `@team_success`, `<!here>` → `@here`, and links → `label
+  (url)`. A message that only shares another message: use the shared message's text. A thread
   reply is the reply's own text, not the whole thread. Two asks in one message: both
   records carry the full message.
 - **Type:** always **TS** on a draft. Hayden changes it to Personal by hand when a draft
@@ -250,7 +253,7 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
 
 ## Running
 
-- **Daily run (scheduled, weekdays around 5pm Eastern):** follow Sources → Scan window →
+- **Daily run (scheduled every night at 12am Eastern, including weekends):** follow Sources → Scan window →
   Dedupe → Classification → write drafts with `python3 scripts/airtable.py create` →
   Rule-change loop → log the run with `python3 scripts/airtable.py finish-run run.json`
   (the days read and the counts; never any Personal details). Log the run only after the
@@ -284,3 +287,6 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
   run reads whole past days up to yesterday, plus any backlog, so a reply or fix has had
   time to show up; Response, Unblocked date and Status use the thread as of the run. New
   **Runs** table records the days each run read.
+- 2026-10-23 · v1.6: the run moves to every night at 12am Eastern and reads up to the day
+  before yesterday, so each ask still gets a full working day to be resolved. Message
+  rule now covers group tags, @here, links and shared messages.

@@ -1,9 +1,9 @@
 # Team Success Log
 
-Every weekday around 5pm Eastern, Claude reads Hayden's Slack (mentions, DMs, Team Success
-group tags, and #forum_teamsuccess) for the previous day, plus any days not yet read (on
-Monday, Friday to Sunday). Waiting a day means Claude can see whether an ask was already
-resolved. It sorts each ask into Team Success or Personal and drafts the Team Success ones
+Every night at 12am Eastern, in the cloud (no computer needs to be on), Claude reads
+Hayden's Slack (mentions, DMs, Team Success group tags, and #forum_teamsuccess) for the
+day before yesterday, plus any days not yet read. Staying a working day behind means Claude
+can see whether an ask was already resolved. It sorts each ask into Team Success or Personal and drafts the Team Success ones
 into the Team Success Log Airtable base. Personal asks are listed in the run summary, not
 logged (where they should live is undecided). Nothing reaches the shared Team Log until
 Hayden ticks Approved.

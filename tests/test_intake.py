@@ -172,35 +172,38 @@ class BuildExistingBase(unittest.TestCase):
         self.assertIn("added field Requests.Message", report)
 
 
-TUE, WED, THU, FRI, MON = (date(2026, 10, d) for d in (20, 21, 22, 23, 26))
+MON, TUE, WED, THU, FRI, SAT = (date(2026, 10, d) for d in (19, 20, 21, 22, 23, 24))
 
 
-class DailyWindow(unittest.TestCase):
-    """A run reads whole Eastern days, from the day after the last run's last day to yesterday."""
+class NightlyWindow(unittest.TestCase):
+    """A run reads whole Eastern days, from the day after the last run's last day up to the
+    day before yesterday. "today" is the day the midnight run fires on."""
 
-    def test_normal_day_reads_yesterday(self):
-        self.assertEqual(scan_window(FRI, last_covered_to=WED), (THU, THU))
-
-    def test_monday_catches_up_on_friday_and_weekend(self):
-        self.assertEqual(scan_window(MON, last_covered_to=THU), (FRI, date(2026, 10, 25)))
+    def test_midnight_run_reads_day_before_yesterday(self):
+        # Fires 12am Friday: Thursday gets a full working day; it reads Wednesday.
+        self.assertEqual(scan_window(FRI, last_covered_to=TUE), (WED, WED))
 
     def test_missed_runs_become_backlog(self):
-        self.assertEqual(scan_window(MON, last_covered_to=TUE), (WED, date(2026, 10, 25)))
+        self.assertEqual(scan_window(SAT, last_covered_to=MON), (TUE, THU))
 
     def test_second_run_same_day_has_nothing_due(self):
-        self.assertIsNone(scan_window(FRI, last_covered_to=THU))
+        self.assertIsNone(scan_window(FRI, last_covered_to=WED))
+
+    def test_run_after_a_daytime_catch_up_has_nothing_due(self):
+        # A catch-up on Friday afternoon read through Thursday; the 12am Saturday run waits.
+        self.assertIsNone(scan_window(SAT, last_covered_to=THU))
 
     def test_first_run_starts_on_day_of_latest_logged_message(self):
         # 23:56 UTC on the 21st is 7:56pm Eastern on the 21st.
         self.assertEqual(eastern_day("2026-10-21T23:56:22.000Z"), WED)
         self.assertEqual(eastern_day("2026-10-22T02:00:00.000Z"), WED)
-        self.assertEqual(scan_window(FRI, latest_message_time="2026-10-21T23:56:22.000Z"), (WED, THU))
+        self.assertEqual(scan_window(SAT, latest_message_time="2026-10-21T23:56:22.000Z"), (WED, THU))
 
     def test_nothing_logged_reads_last_week(self):
-        self.assertEqual(scan_window(FRI), (date(2026, 10, 16), THU))
+        self.assertEqual(scan_window(SAT), (date(2026, 10, 17), THU))
 
     def test_runs_win_over_message_times(self):
-        self.assertEqual(scan_window(FRI, WED, "2026-10-19T15:00:00.000Z"), (THU, THU))
+        self.assertEqual(scan_window(SAT, WED, "2026-10-19T15:00:00.000Z"), (THU, THU))
 
 
 class RunLog(unittest.TestCase):
