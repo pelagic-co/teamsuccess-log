@@ -131,13 +131,20 @@ def today_eastern():
     return datetime.now(EASTERN).date()
 
 
+def latest_message_before(rows, today):
+    """Latest Message time among records created before today, so a first run's own drafts
+    can't move its window between `logged` and `finish-run`."""
+    times = [r["fields"]["Message time"] for r in rows
+             if r["fields"].get("Message time") and eastern_day(r["createdTime"]) < today]
+    return max(times) if times else None
+
+
 def current_window(client, today):
     runs = client.list_records(RUNS, fields=["Covered to"])
     covered = sorted(r["fields"]["Covered to"] for r in runs if r["fields"].get("Covered to"))
     last = date.fromisoformat(covered[-1]) if covered else None
-    times = sorted(r["fields"]["Message time"] for r in client.list_records(REQUESTS, fields=["Message time"])
-                   if r["fields"].get("Message time"))
-    return scan_window(today, last, times[-1] if times else None)
+    rows = client.list_records(REQUESTS, fields=["Message time"])
+    return scan_window(today, last, latest_message_before(rows, today))
 
 
 def cmd_logged(client):

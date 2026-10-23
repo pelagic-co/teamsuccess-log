@@ -6,7 +6,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from datetime import date  # noqa: E402
 
-from airtable import eastern_day, next_ts_number, scan_window, validate_draft, validate_run  # noqa: E402
+from airtable import (eastern_day, latest_message_before, next_ts_number, scan_window,  # noqa: E402
+                      validate_draft, validate_run)
 from build_base import build  # noqa: E402
 from lists import group_of, load_lists, resource_required_values  # noqa: E402
 from schema import REQUESTS, RULE_CHANGES, checks_formula, requests_fields, tables  # noqa: E402
@@ -201,6 +202,16 @@ class NightlyWindow(unittest.TestCase):
 
     def test_nothing_logged_reads_last_week(self):
         self.assertEqual(scan_window(SAT), (date(2026, 10, 17), THU))
+
+    def test_first_runs_own_drafts_do_not_move_its_window(self):
+        rows = [
+            {"createdTime": "2026-10-22T14:00:00.000Z", "fields": {"Message time": "2026-10-21T23:56:22.000Z"}},
+            # Drafted by today's run, for a message on the 22nd: must not count yet.
+            {"createdTime": "2026-10-24T04:05:00.000Z", "fields": {"Message time": "2026-10-22T18:00:00.000Z"}},
+            {"createdTime": "2026-10-20T14:00:00.000Z", "fields": {}},
+        ]
+        self.assertEqual(latest_message_before(rows, SAT), "2026-10-21T23:56:22.000Z")
+        self.assertIsNone(latest_message_before(rows[1:], SAT))
 
     def test_runs_win_over_message_times(self):
         self.assertEqual(scan_window(SAT, WED, "2026-10-19T15:00:00.000Z"), (THU, THU))
