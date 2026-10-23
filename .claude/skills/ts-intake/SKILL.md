@@ -9,7 +9,7 @@ This file is the single home for every intake and classification rule. Hayden ed
 (from Claude Code on his phone or anywhere else); each edit is a commit; the next run uses
 the new version. If a rule is not written here, it is not a rule.
 
-**Rules version:** 2026-10-21 · v1.3
+**Rules version:** 2026-10-23 · v1.4
 
 ## Hard rules (never break these)
 
@@ -97,7 +97,15 @@ few words, the client, and the Slack link.
 Fill every field you can on each TS draft. Leave a field blank rather than guess when the
 message gives nothing to go on, and say what's missing in **Claude notes**.
 
-- **Summary:** one line, in the requester's words.
+- **Summary:** one line in your own words saying what is being asked for, so Hayden and
+  the team can scan the log without opening Slack. Start with the action, name the
+  client or tool, and leave out greetings and the requester's name (that's in
+  **Requester**). Example: "Add Manukora to the hours tracker." Two asks in one message
+  get one Summary each.
+- **Message:** the Slack message text, word for word. Don't trim, fix or paraphrase it;
+  only turn Slack's mention codes into names (`<@U07Q9KYU4MR>` → `@Hayden`). A thread
+  reply is the reply's own text, not the whole thread. Two asks in one message: both
+  records carry the full message.
 - **Type:** always **TS** on a draft. Hayden changes it to Personal by hand when a draft
   isn't TS work (and says why in **Why I changed it**, which feeds the rule-change loop).
 - **Request ID:** next number after the highest TS-#### in Requests and after
@@ -257,3 +265,5 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
 - 2026-10-21 · v1.3: Personal asks are no longer logged in this base; each run lists them
   in its summary. Where they should live is undecided. Drafts are always Type TS (Hayden
   sets Personal by hand); when unsure, pick TS. Personal DM grouping removed.
+- 2026-10-23 · v1.4: **Summary** is now Claude's one-line summary of the ask, not the
+  requester's words. New **Message** field holds the Slack message text word for word.

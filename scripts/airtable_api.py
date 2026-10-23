@@ -64,6 +64,10 @@ class Client:
         return self.request("PATCH", f"meta/bases/{self.base_id}/tables/{table_id}/fields/{field_id}",
                             {"name": name})
 
+    def describe_field(self, table_id, field_id, description):
+        return self.request("PATCH", f"meta/bases/{self.base_id}/tables/{table_id}/fields/{field_id}",
+                            {"description": description})
+
     # Records
     def list_records(self, table, fields=None, formula=None):
         records, offset = [], None

@@ -69,7 +69,8 @@ CHECKS_FORMULA = (
 
 def requests_fields(lists):
     return [
-        _text("Summary", "Field 7. One line, in the requester's words."),
+        _text("Summary", "Field 7. One line, in Claude's words: what is being asked for."),
+        _long("Message", "The Slack message text, word for word."),
         _select("Type", lists["type"], "Drafts are always TS. Hayden sets Personal by hand on a draft that isn't TS work."),
         _text("Request ID", "Field 0. TS-0001 style. TS records only. Never reused."),
         _date("Date received", "Field 1."),

@@ -21,7 +21,7 @@ from schema import REQUESTS, RULE_CHANGES, requests_fields
 BACKFILL_LAST_ID = 7  # TS-0007 is the last row backfilled into the Google Sheet request log
 TS_ID = re.compile(r"^TS-(\d{4,})$")
 SLACK_LINK = re.compile(r"^https://[a-z0-9-]+\.slack\.com/archives/[A-Z0-9]+/p\d+")
-REQUIRED = ["Summary", "Type", "Slack link", "Slack thread", "Message time", "Claude notes", "Original draft"]
+REQUIRED = ["Summary", "Message", "Type", "Slack link", "Slack thread", "Message time", "Claude notes", "Original draft"]
 
 
 def next_ts_number(ids):

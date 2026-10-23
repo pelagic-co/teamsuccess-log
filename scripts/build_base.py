@@ -1,7 +1,8 @@
 """Builds the Team Success Log tables inside an existing (empty) Airtable base.
 
-Safe to run again: it only adds what is missing and reports any drift. It never deletes
-or renames anything Hayden made, apart from naming the one link field it creates.
+Safe to run again: it only adds what is missing, keeps field descriptions in step with
+schema.py, and reports any drift. It never deletes or renames anything Hayden made, apart
+from naming the one link field it creates.
 
     AIRTABLE_TOKEN=... AIRTABLE_BASE_ID=app... python3 scripts/build_base.py
 """
@@ -30,11 +31,17 @@ def build(client):
             if field["name"] not in have:
                 client.create_field(existing[name]["id"], field)
                 report.append(f"added field {name}.{field['name']}")
-            elif have[field["name"]]["type"] != field["type"]:
-                report.append(f"DRIFT {name}.{field['name']} is {have[field['name']]['type']}, expected {field['type']}")
-            elif field["type"] in ("singleSelect", "multipleSelects"):
-                got = {c["name"] for c in have[field["name"]]["options"]["choices"]}
-                missing = [c["name"] for c in field["options"]["choices"] if c["name"] not in got]
+                continue
+            got = have[field["name"]]
+            if got["type"] != field["type"]:
+                report.append(f"DRIFT {name}.{field['name']} is {got['type']}, expected {field['type']}")
+                continue
+            if got.get("description", "") != field["description"]:
+                client.describe_field(existing[name]["id"], got["id"], field["description"])
+                report.append(f"updated description of {name}.{field['name']}")
+            if field["type"] in ("singleSelect", "multipleSelects"):
+                choices = {c["name"] for c in got["options"]["choices"]}
+                missing = [c["name"] for c in field["options"]["choices"] if c["name"] not in choices]
                 if missing:
                     report.append(f"note {name}.{field['name']} lacks choices {missing}; "
                                   "they are added automatically the first time a record uses them")

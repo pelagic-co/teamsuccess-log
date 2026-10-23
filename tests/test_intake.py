@@ -5,8 +5,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from airtable import next_ts_number, validate_draft  # noqa: E402
+from build_base import build  # noqa: E402
 from lists import group_of, load_lists, resource_required_values  # noqa: E402
-from schema import checks_formula, requests_fields, tables  # noqa: E402
+from schema import REQUESTS, RULE_CHANGES, checks_formula, requests_fields, tables  # noqa: E402
 
 LISTS = load_lists()
 LINK = "https://pelagicworkspace.slack.com/archives/C0B00JQJLHZ/p1792092664499889"
@@ -14,7 +15,8 @@ LINK = "https://pelagicworkspace.slack.com/archives/C0B00JQJLHZ/p179209266449988
 
 def draft(**over):
     d = {
-        "Summary": "Can you add Manukora to my hours tracker?",
+        "Summary": "Add Manukora to the hours tracker.",
+        "Message": "Hey @Hayden can you add Manukora to my hours tracker?",
         "Type": "TS",
         "Request ID": "TS-0008",
         "Source": "Team Support Slack",
@@ -60,7 +62,7 @@ class Schema(unittest.TestCase):
                  "Resource required", "Root cause", "Response", "Routed to", "Unblocked date", "Lasting fix",
                  "Lasting fix status", "Resource link", "Workflow maturity", "Related requests",
                  "TS time spent", "Notes"]
-        extra = ["Type", "Slack link", "Status", "Approved", "Why I changed it"]
+        extra = ["Type", "Message", "Slack link", "Status", "Approved", "Why I changed it"]
         self.assertEqual([n for n in model + extra if n not in names], [])
 
     def test_no_duplicate_field_names(self):
@@ -72,6 +74,10 @@ class Schema(unittest.TestCase):
         for fields in tables().values():
             self.assertEqual(fields[0]["type"], "singleLineText")
 
+    def test_message_is_long_text(self):
+        fields = {f["name"]: f for f in requests_fields(LISTS)}
+        self.assertEqual(fields["Message"]["type"], "multilineText")
+
     def test_checks_formula_lists_values(self):
         f = checks_formula(LISTS)
         self.assertIn("Tool|Training|Information|Process|Workflow|Access", f)
@@ -81,6 +87,9 @@ class Schema(unittest.TestCase):
 class Validation(unittest.TestCase):
     def test_good_draft_passes(self):
         self.assertEqual(validate_draft(draft(), LISTS, set()), [])
+
+    def test_message_is_required(self):
+        self.assertIn("missing Message", validate_draft(draft(Message=""), LISTS, set()))
 
     def test_approved_is_refused(self):
         self.assertIn("drafts must not set Approved", validate_draft(draft(Approved=True), LISTS, set()))
@@ -118,6 +127,43 @@ class Validation(unittest.TestCase):
     def test_bad_slack_link(self):
         p = validate_draft(draft(**{"Slack link": "https://example.com"}), LISTS, set())
         self.assertIn("Slack link is not a Slack permalink", p)
+
+
+class FakeBase:
+    """An already-built base, before the Message field existed and with the old Summary description."""
+
+    def __init__(self):
+        requests = [dict(f, id=f"fld{i}") for i, f in enumerate(requests_fields(LISTS)) if f["name"] != "Message"]
+        requests.append({"id": "fldLink", "name": "Rule changes", "type": "multipleRecordLinks",
+                         "options": {"linkedTableId": "tblRC"}})
+        summary = next(f for f in requests if f["name"] == "Summary")
+        summary["description"] = "Field 7. One line, in the requester's words."
+        rule_changes = [dict(f, id=f"fldR{i}") for i, f in enumerate(tables()[RULE_CHANGES])]
+        rule_changes.append({"id": "fldSrc", "name": "Source records", "type": "multipleRecordLinks"})
+        self._tables = [{"id": "tblRQ", "name": REQUESTS, "fields": requests},
+                        {"id": "tblRC", "name": RULE_CHANGES, "fields": rule_changes}]
+        self.calls = []
+
+    def tables(self):
+        return self._tables
+
+    def create_field(self, table_id, field):
+        self.calls.append(("create", table_id, field["name"]))
+
+    def describe_field(self, table_id, field_id, description):
+        self.calls.append(("describe", table_id, field_id, description))
+
+
+class BuildExistingBase(unittest.TestCase):
+    def test_adds_message_and_updates_summary_description(self):
+        base = FakeBase()
+        report = build(base)
+        summary_id = next(f["id"] for f in base._tables[0]["fields"] if f["name"] == "Summary")
+        self.assertEqual(base.calls, [
+            ("describe", "tblRQ", summary_id, "Field 7. One line, in Claude's words: what is being asked for."),
+            ("create", "tblRQ", "Message"),
+        ])
+        self.assertIn("added field Requests.Message", report)
 
 
 class RequestIds(unittest.TestCase):
