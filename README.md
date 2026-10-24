@@ -18,7 +18,7 @@ Hayden ticks Approved.
 | Role on a client (CML / Senior / Tactical operator), read from PelOS | `scripts/pelos.py` |
 | Review sessions with Hayden: running log of edits and his by-hand list | `reviews/` (record backups stay local, not in git) |
 | Checks | `python3 -m unittest discover -s tests` |
-| How Claude works in this repo (main branch only) | `CLAUDE.md` |
+| How Claude works in this repo (one branch only: `claude/serene-dirac-5z23ay`) | `CLAUDE.md` |
 
 ## One-time Airtable setup (Hayden, about 10 minutes)
 

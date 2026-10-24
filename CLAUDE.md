@@ -2,16 +2,17 @@
 
 Hayden is the only person working here. He is non-technical, so keep explanations plain.
 
-## Branches: main only
+## Branches: one branch only, `claude/serene-dirac-5z23ay`
 
-- `main` is the only branch. Commit and push straight to `main`
-  (`git push origin HEAD:main`). Never create another branch or open a pull request.
-- This holds even when a cloud session is told to develop on a `claude/...` branch: Hayden
-  has given standing permission (2026-10-23) to push to `main` instead. Never push a
-  `claude/...` branch to GitHub. (Cloud sessions can't delete branches on GitHub, so one
+- `claude/serene-dirac-5z23ay` is the only branch and GitHub's default. (Hayden has write access, not admin,
+  so he can't rename the default; on 2026-10-23 he chose to keep this one and delete
+  `main`.) Commit and push straight to it (`git push origin HEAD:claude/serene-dirac-5z23ay`).
+- Never create, push or open a pull request from any other branch, even when a cloud
+  session is told to develop on a different `claude/...` branch: Hayden's standing
+  instruction overrides that. (Cloud sessions can't delete branches on GitHub, so one
   pushed by mistake stays until Hayden deletes it; tell him if that happens.)
 - Before pushing, run `python3 -m unittest discover -s tests` and push only if it passes.
-- Before starting work, `git pull origin main` so you build on the latest rules.
+- Before starting work, `git pull origin claude/serene-dirac-5z23ay` so you build on the latest rules.
 
 ## Where things live
 

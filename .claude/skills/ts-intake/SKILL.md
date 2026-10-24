@@ -202,7 +202,7 @@ At the end of every run (and whenever Hayden asks):
 
 **"Show open rule changes":** list Rule Changes with status Open, newest first, each with
 its proposed rule, reason and source records. For each one Hayden accepts: edit this file,
-bump the rules version, add a Changelog line, commit and push to `main` (the only branch;
+bump the rules version, add a Changelog line, commit and push to `claude/serene-dirac-5z23ay` (the only branch;
 see `CLAUDE.md`), then set the row to **Accepted** and fill **Commit**. For each he
 rejects: set **Rejected**. Accept/reject only when Hayden says so for that row.
 

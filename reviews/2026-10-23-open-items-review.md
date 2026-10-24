@@ -17,8 +17,11 @@ _Things Claude can't do through the API. Added as they come up._
 - [ ] **PelOS read-only token** for the nightly run's role lookup: airtable.com/create/tokens
       → new token, scope `data.records:read` only, access: the **PelOS** base only. Add it
       to this cloud environment's secrets as `PELOS_TOKEN`.
-- [ ] _Waiting on decision_: delete the "Account team" option from Requester party /
-      Needs help party once records are moved to the new values.
+- [ ] **Delete the "Account team" option** from Requester party and Needs help party
+      (Customize field → trash icon on the option). No record uses it any more.
+- [ ] **GitHub branches** (github.com/haydenpelagic/teamsuccess-log/branches): delete
+      `main`, `claude/amazing-mendel-wc65nw` and `claude/clever-planck-4nm6n3`. Keep
+      `claude/serene-dirac-5z23ay`: it's the default and now the only branch.
 
 ## Field changes Claude made
 
@@ -40,6 +43,11 @@ _One line per record: what changed and why. Before/after copies in backups/edits
 - Internal → Services team (TS-0010, 0023, 0024, 0027, 0030, 0031): Client cleared,
   Needs help = Services team, Needs help party = Services team (new option). TS-0031's
   old Needs help party (Client Success, no name) replaced.
+- TS-0033 Client → Sunrise Organics (Daniel → Tactical operator); TS-0017 Client → Zoid
+  (Ciara → CML); TS-0008 Requester party blank + Claude note (Brian not staffed on Toon
+  in PelOS yet).
+- Requester party → Services team on internal no-client asks: TS-0010, 0023, 0024,
+  0027, 0031. TS-0023 stays scrapped.
 - Account team → PelOS role on that client, 18 fields across 17 records: TS-0009 Sr op,
   0012 Tactical, 0013 Sr op, 0014 CML, 0015 Sr op, 0016 CML, 0018 CML, 0019 Tactical,
   0020 Sr op, 0021 CML, 0025 CML, 0026 Sr op, 0028 CML, 0029 (Lina) Tactical, 0032
@@ -54,8 +62,13 @@ _One line per record: what changed and why. Before/after copies in backups/edits
 - **Account team is split** into CML / Senior operator / Tactical operator (accepted).
   Rule: look up the person's role **on that client** in PelOS → Engagements (Client
   Management Lead / Senior Operator / Tactical Operator(s)), using the engagement that
-  covers the message date. Code: `scripts/pelos.py`. Open: fallback when there's no
-  client or the person isn't staffed there yet; several roles → most senior wins?
+  covers the message date. Code: `scripts/pelos.py`. Fallbacks (Hayden, 2026-10-23):
+  internal ask with no client → Services team; not staffed on that client in PelOS →
+  leave blank and say so in Claude notes; several roles on one client → most senior
+  (CML > Senior operator > Tactical operator).
+- **One branch only:** `claude/serene-dirac-5z23ay` (GitHub default; Hayden can't change
+  the default without admin). `main` to be deleted by Hayden. CLAUDE.md, skill, README
+  and the nightly run point at the new branch.
 - **Routed to** becomes multi-select using the same party list (accepted).
 
 ## Follow-ups for the intake rules / code (end of session)
