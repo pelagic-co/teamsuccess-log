@@ -15,6 +15,8 @@ Hayden ticks Approved.
 | All intake and classification rules | `.claude/skills/ts-intake/SKILL.md` (edit this to change behaviour) |
 | Airtable tables and fields | `scripts/schema.py`, built by `scripts/build_base.py` |
 | What a run may do in Airtable | `scripts/airtable.py` (create drafts, log rule changes and runs; no edit or delete) |
+| Role on a client (CML / Senior / Tactical operator), read from PelOS | `scripts/pelos.py` |
+| Review sessions with Hayden: running log of edits and his by-hand list | `reviews/` (record backups stay local, not in git) |
 | Checks | `python3 -m unittest discover -s tests` |
 | How Claude works in this repo (main branch only) | `CLAUDE.md` |
 
