@@ -9,7 +9,7 @@ This file is the single home for every intake and classification rule. Hayden ed
 (from Claude Code on his phone or anywhere else); each edit is a commit; the next run uses
 the new version. If a rule is not written here, it is not a rule.
 
-**Rules version:** 2026-10-23 · v1.8
+**Rules version:** 2026-11-02 · v1.9
 
 ## Hard rules (never break these)
 
@@ -133,6 +133,24 @@ message gives nothing to go on, and say what's missing in **Claude notes**.
   records carry the full message.
 - **Type:** always **TS** on a draft. Hayden changes it to Personal by hand when a draft
   isn't TS work (and says why in **Why I changed it**, which feeds the rule-change loop).
+- **Topic:** every subject the ask is about, so Hayden can count asks by topic. Usually
+  one; add more only when the ask is clearly about more than one. Topic is the subject,
+  not the kind of help (that's **Resource required**): access to a forecast sheet is
+  Forecasting, not Accounts & AI Tools.
+  - **Ops Hub:** work inside a client's Ops Hub (inventory log, WOH, BOM, getting data in).
+  - **Forecasting:** demand planners, forecast files, S&OP, MRP, WOH targets, projections.
+    Forecast work built inside an Ops Hub gets both Ops Hub and Forecasting.
+  - **COGS:** cost of goods, landed cost, unit cost, margin.
+  - **Vendor Search:** 3PL, co-packer, CM and lab searches: RFQs, quotes, eval matrices,
+    vendor contacts.
+  - **Client Ops Execution:** one-off client operations: PO status, 3PL portal how-tos,
+    inventory mismatches between systems, packaging and materials.
+  - **Templates & SOPs:** internal templates, SOPs, checklists, one-pagers, reusable tools
+    (RACI, EOW report, offboarding).
+  - **Hours & Capacity:** hours tracker, capacity dashboard, operator UI, SOW and
+    milestone assignment.
+  - **Accounts & AI Tools:** Claude, 1Password, Notion, Gemini, 2FA, AI agent builds.
+  - **Other:** none of the above fits. Only on its own; say why in **Claude notes**.
 - **Request ID:** next number after the highest TS-#### in Requests and after
   `TS-0007` (the last row backfilled in the Google Sheet), whichever is higher. Never reuse
   a number, even if Hayden later changes the Type.
@@ -209,7 +227,8 @@ rejects: set **Rejected**. Accept/reject only when Hayden says so for that row.
 ## Keeping lists in step with the Brain
 
 The value lists below are copied from the Team Success space in the Pelagic Brain (owner:
-Hayden). Versions copied: request model v1.5, resource required v1.3, root causes v1,
+Hayden). **Topic** is the exception: its list lives only in this file (Hayden,
+2026-11-02). Versions copied: request model v1.5, resource required v1.3, root causes v1,
 responses v1.1, routing map v0 (last changed 2026-10-23). The Brain pages match these
 rules as of 2026-10-23.
 - At the start of each run, check those pages' versions. If any changed, finish the run on
@@ -265,7 +284,18 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
   "status": ["Open", "In progress", "Done", "Not an ask"],
   "rule_change_status": ["Open", "Accepted", "Rejected"],
   "personal_clients": ["DairyPill", "Little Saints", "Fronen"],
-  "scrap_reason": ["Hours tracking / client add / milestone error"]
+  "scrap_reason": ["Hours tracking / client add / milestone error"],
+  "topic": [
+    "Ops Hub",
+    "Forecasting",
+    "COGS",
+    "Vendor Search",
+    "Client Ops Execution",
+    "Templates & SOPs",
+    "Hours & Capacity",
+    "Accounts & AI Tools",
+    "Other"
+  ]
 }
 ```
 
@@ -314,3 +344,7 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
 - 2026-10-23 · v1.8: **Resource required** and **Resource group** are multi-select. Pick
   every resource the ask needs; Resource group holds exactly their groups. Routed to lists
   one route per resource.
+- 2026-11-02 · v1.9: new **Topic** multi-select (Ops Hub, Forecasting, COGS, Vendor
+  Search, Client Ops Execution, Templates & SOPs, Hours & Capacity, Accounts & AI Tools,
+  Other). Required on every draft; Other only on its own. The list lives only here, not in
+  the Brain. TS-0008 to TS-0076 were back-filled.

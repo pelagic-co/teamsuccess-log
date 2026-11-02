@@ -103,6 +103,8 @@ def requests_fields(lists):
             "options": {"precision": 1},
         },
         _long("Notes", "Field 20."),
+        _multi("Topic", lists["topic"],
+               "Field 21. Every subject the ask is about (usually one). Other only on its own."),
         _select("Status", lists["status"]),
         _url("Slack link", "Permalink of the ask. Dedupe key."),
         _url("Slack thread", "Permalink of the thread root. Dedupe key."),

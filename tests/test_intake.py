@@ -21,6 +21,7 @@ def draft(**over):
         "Summary": "Add Manukora to the hours tracker.",
         "Message": "Hey @Hayden can you add Manukora to my hours tracker?",
         "Type": "TS",
+        "Topic": ["Hours & Capacity"],
         "Request ID": "TS-0008",
         "Source": "Team Support Slack",
         "Resource group": ["Thing"],
@@ -52,6 +53,10 @@ class ListsMatchRequestModel(unittest.TestCase):
     def test_four_root_causes_six_responses(self):
         self.assertEqual(len(LISTS["root_cause"]), 4)
         self.assertEqual(len(LISTS["response"]), 6)
+
+    def test_topics(self):
+        self.assertEqual(LISTS["topic"][:3], ["Ops Hub", "Forecasting", "COGS"])
+        self.assertEqual(LISTS["topic"][-1], "Other")
 
     def test_personal_clients(self):
         self.assertEqual(LISTS["personal_clients"], ["DairyPill", "Little Saints", "Fronen"])
@@ -107,6 +112,21 @@ class Validation(unittest.TestCase):
 
     def test_message_is_required(self):
         self.assertIn("missing Message", validate_draft(draft(Message=""), LISTS, set()))
+
+    def test_topic_is_required(self):
+        self.assertIn("missing Topic", validate_draft(draft(Topic=[]), LISTS, set()))
+
+    def test_topic_is_a_list_from_the_list(self):
+        self.assertIn("Topic must be a list", validate_draft(draft(Topic="Ops Hub"), LISTS, set()))
+        p = validate_draft(draft(Topic=["Inventory"]), LISTS, set())
+        self.assertIn("Topic='Inventory' is not in the list", p)
+
+    def test_topic_can_have_several(self):
+        self.assertEqual(validate_draft(draft(Topic=["Ops Hub", "Forecasting"]), LISTS, set()), [])
+
+    def test_topic_other_stands_alone(self):
+        p = validate_draft(draft(Topic=["Other", "Ops Hub"]), LISTS, set())
+        self.assertIn("Topic Other must be on its own", p)
 
     def test_scrap_needs_a_reason(self):
         p = validate_draft(draft(Scrap=True), LISTS, set())

@@ -27,7 +27,8 @@ SLACK_LINK = re.compile(r"^https://[a-z0-9-]+\.slack\.com/archives/[A-Z0-9]+/p\d
 EASTERN = ZoneInfo("America/New_York")
 FIRST_RUN_DAYS = 7  # nothing logged at all: read the last week
 WAIT_DAYS = 2  # the newest day a run reads is the day before yesterday
-REQUIRED = ["Summary", "Message", "Type", "Slack link", "Slack thread", "Message time", "Claude notes", "Original draft"]
+REQUIRED = ["Summary", "Message", "Type", "Topic", "Slack link", "Slack thread", "Message time", "Claude notes",
+            "Original draft"]
 
 
 def next_ts_number(ids):
@@ -118,6 +119,9 @@ def validate_draft(draft, lists, known_links):
         problems.append("Needs help and Needs help party must both be filled or both blank")
     if "Scrap" in draft and not isinstance(draft["Scrap"], bool):
         problems.append("Scrap must be true or false")
+    topics = draft.get("Topic") or []
+    if isinstance(topics, list) and "Other" in topics and len(topics) > 1:
+        problems.append("Topic Other must be on its own")
     if bool(draft.get("Scrap")) != bool(draft.get("Scrap reason")):
         problems.append("Scrap and Scrap reason must both be filled or both blank")
     if draft.get("Type") == "TS" and not TS_ID.match(draft.get("Request ID") or ""):
