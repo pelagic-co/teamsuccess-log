@@ -335,7 +335,7 @@ def cmd_update(client, path):
     if errors:
         print("Nothing written. Fix these first:\n" + "\n".join(errors), file=sys.stderr)
         return 1
-    client.update_records(REQUESTS, writes)
+    client.update_records(REQUESTS, writes, typecast=True)  # values validated above
     print(f"updated {len(writes)} record(s)")
     return 0
 

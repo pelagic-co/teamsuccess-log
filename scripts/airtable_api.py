@@ -94,10 +94,12 @@ class Client:
             created.extend(out["records"])
         return created
 
-    def update_records(self, table, updates):
+    def update_records(self, table, updates, typecast=False):
+        """typecast=True lets Airtable add a select choice it doesn't have yet; only pass it
+        for values already checked against the skill's lists."""
         out = []
         for i in range(0, len(updates), 10):
             batch = [{"id": rid, "fields": f} for rid, f in updates[i:i + 10]]
             out.extend(self.request("PATCH", f"{self.base_id}/{urllib.parse.quote(table)}",
-                                    {"records": batch})["records"])
+                                    {"records": batch, "typecast": typecast})["records"])
         return out

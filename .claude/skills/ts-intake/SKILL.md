@@ -9,7 +9,7 @@ This file is the single home for every intake and classification rule. Hayden ed
 (from Claude Code on his phone or anywhere else); each edit is a commit; the next run uses
 the new version. If a rule is not written here, it is not a rule.
 
-**Rules version:** 2026-11-02 · v1.11
+**Rules version:** 2026-11-02 · v1.12
 
 ## Hard rules (never break these)
 
@@ -153,6 +153,8 @@ message gives nothing to go on, and say what's missing in **Claude notes**.
   - **Hours & Capacity:** hours tracker, capacity dashboard, operator UI, SOW and
     milestone assignment.
   - **Accounts & AI Tools:** Claude, 1Password, Notion, Gemini, 2FA, AI agent builds.
+  - **GS1:** UPCs, GTINs, barcodes, GS1 company prefix and membership, product data
+    registered with GS1. A barcode ask about packaging artwork gets GS1 too.
   - **Other:** none of the above fits. Only on its own. Add a line to **Claude notes**
     reading `Suggested topic: <name>`, naming the topic you'd have picked (a short, general
     name like "Packaging", not a client or one-off). Reuse an earlier suggestion's exact
@@ -311,6 +313,7 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
     "Templates & SOPs",
     "Hours & Capacity",
     "Accounts & AI Tools",
+    "GS1",
     "Other"
   ]
 }
@@ -372,3 +375,5 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
 - 2026-11-02 · v1.11: an Other topic needs a `Suggested topic:` line in Claude notes. Once
   3 Other requests share a suggestion, the run proposes adding it as a Rule Changes row;
   Hayden accepts or rejects as usual. New `topic-suggestions` command.
+- 2026-11-02 · v1.12: new topic **GS1** (UPCs, GTINs, barcodes), added by Hayden. TS-0062
+  re-tagged from Other to GS1.
