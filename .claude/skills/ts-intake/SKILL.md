@@ -9,7 +9,7 @@ This file is the single home for every intake and classification rule. Hayden ed
 (from Claude Code on his phone or anywhere else); each edit is a commit; the next run uses
 the new version. If a rule is not written here, it is not a rule.
 
-**Rules version:** 2026-11-02 · v1.10
+**Rules version:** 2026-11-02 · v1.11
 
 ## Hard rules (never break these)
 
@@ -153,7 +153,10 @@ message gives nothing to go on, and say what's missing in **Claude notes**.
   - **Hours & Capacity:** hours tracker, capacity dashboard, operator UI, SOW and
     milestone assignment.
   - **Accounts & AI Tools:** Claude, 1Password, Notion, Gemini, 2FA, AI agent builds.
-  - **Other:** none of the above fits. Only on its own; say why in **Claude notes**.
+  - **Other:** none of the above fits. Only on its own. Add a line to **Claude notes**
+    reading `Suggested topic: <name>`, naming the topic you'd have picked (a short, general
+    name like "Packaging", not a client or one-off). Reuse an earlier suggestion's exact
+    name when it fits, so repeats count together. See Rule-change loop step 4.
 - **Request ID:** next number after the highest TS-#### in Requests and after
   `TS-0007` (the last row backfilled in the Google Sheet), whichever is higher. Never reuse
   a number, even if Hayden later changes the Type.
@@ -220,6 +223,17 @@ At the end of every run (and whenever Hayden asks):
    this file), the reason, the section of this file it changes, status **Open**, and a
    link back to the record(s). Group records that point to the same rule into one row.
 3. Never edit this file because of a rule change on your own. Hayden accepts it.
+4. **New topics.** Run `python3 scripts/airtable.py topic-suggestions`. For each suggested
+   topic it lists (3 or more Other requests share it, and no Rule Changes row has proposed
+   it before), write one Rule Changes row: proposed rule `Add topic "<name>" to the Topic
+   list.`, the reason (how many asks and what they were about), skill section "Filling the
+   fields (Topic) and Lists (topic)", status **Open**, linked to those requests.
+   Use the name exactly as the command prints it. A rejected topic is never proposed again.
+
+**Accepting a new topic:** add it to the `topic` list (before "Other") and give it a
+definition under **Topic**, then run `python3 scripts/build_base.py` (it reports the new
+choice; Airtable adds it on first use), then re-tag the linked requests with `update`,
+replacing Other with the new topic.
 
 **"Show open rule changes":** list Rule Changes with status Open, newest first, each with
 its proposed rule, reason and source records. For each one Hayden accepts: edit this file,
@@ -355,3 +369,6 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
   Hayden asks in a conversation, via the new `update` command; never Approved, Why I
   changed it or Rule changes. The nightly run still only creates. Used first to back-fill
   Topic on TS-0008 to TS-0076.
+- 2026-11-02 · v1.11: an Other topic needs a `Suggested topic:` line in Claude notes. Once
+  3 Other requests share a suggestion, the run proposes adding it as a Rule Changes row;
+  Hayden accepts or rejects as usual. New `topic-suggestions` command.

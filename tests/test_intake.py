@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from datetime import date  # noqa: E402
 
 from airtable import (eastern_day, field_type_drift, latest_message_before, next_ts_number, scan_window,  # noqa: E402
-                      validate_draft, validate_run, validate_update)
+                      topic_suggestions, validate_draft, validate_run, validate_update)
 from build_base import build  # noqa: E402
 from lists import group_of, load_lists, resource_required_values  # noqa: E402
 from schema import REQUESTS, RULE_CHANGES, checks_formula, requests_fields, tables  # noqa: E402
@@ -296,6 +296,49 @@ class RunLog(unittest.TestCase):
 
     def test_nothing_due(self):
         self.assertEqual(validate_run(self.RUN, None), ["no Slack days were due, so there is no run to log"])
+
+
+def other(rid, notes, topic=("Other",)):
+    return {"id": f"rec{rid}", "fields": {"Request ID": rid, "Topic": list(topic), "Claude notes": notes}}
+
+
+class NewTopics(unittest.TestCase):
+    def test_other_draft_needs_a_suggestion(self):
+        p = validate_draft(draft(Topic=["Other"]), LISTS, set())
+        self.assertIn("Topic Other needs a 'Suggested topic: <name>' line in Claude notes", p)
+        ok = draft(Topic=["Other"], **{"Claude notes": "Packaging spec ask.\nSuggested topic: Packaging"})
+        self.assertEqual(validate_draft(ok, LISTS, set()), [])
+
+    def test_suggestion_already_in_list_refused(self):
+        d = draft(Topic=["Other"], **{"Claude notes": "Suggested topic: forecasting"})
+        self.assertIn("suggested topic 'forecasting' is already in the list; use it instead of Other",
+                      validate_draft(d, LISTS, set()))
+
+    def test_three_matching_others_are_proposed(self):
+        rows = [other("TS-0100", "Suggested topic: Packaging"),
+                other("TS-0101", "x\nsuggested topic: packaging."),
+                other("TS-0102", "Suggested topic: Packaging"),
+                other("TS-0103", "Suggested topic: Freight")]
+        out = topic_suggestions(rows, [], LISTS)
+        self.assertEqual([(g["topic"], g["count"]) for g in out], [("Packaging", 3)])
+        self.assertEqual(out[0]["request_ids"], ["TS-0100", "TS-0101", "TS-0102"])
+
+    def test_two_is_not_enough(self):
+        rows = [other("TS-0100", "Suggested topic: Packaging"), other("TS-0101", "Suggested topic: Packaging")]
+        self.assertEqual(topic_suggestions(rows, [], LISTS), [])
+
+    def test_only_other_alone_counts(self):
+        rows = [other(f"TS-01{i:02}", "Suggested topic: Packaging", topic=("Ops Hub",)) for i in range(3)]
+        rows += [other("TS-0200", "no suggestion here")]
+        self.assertEqual(topic_suggestions(rows, [], LISTS), [])
+
+    def test_never_proposed_twice(self):
+        rows = [other(f"TS-01{i:02}", "Suggested topic: Packaging") for i in range(4)]
+        self.assertEqual(topic_suggestions(rows, ['Add topic "packaging" to the Topic list.'], LISTS), [])
+
+    def test_existing_topic_not_proposed(self):
+        rows = [other(f"TS-01{i:02}", "Suggested topic: COGS") for i in range(3)]
+        self.assertEqual(topic_suggestions(rows, [], LISTS), [])
 
 
 class Overwrite(unittest.TestCase):

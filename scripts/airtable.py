@@ -7,6 +7,7 @@
     python3 scripts/airtable.py propose change.json # create one Rule Changes row linked to its source records
     python3 scripts/airtable.py open-changes        # Rule Changes with status Open
     python3 scripts/airtable.py set-change recXXX Accepted [commit-url]   # only when Hayden says so
+    python3 scripts/airtable.py topic-suggestions   # suggested topics shared by 3+ Other requests, not yet proposed
     python3 scripts/airtable.py update updates.json # overwrite fields on existing Requests (only when Hayden asks)
 
 `update` is for edits Hayden asks for in a conversation (e.g. back-filling a new field);
@@ -125,6 +126,12 @@ def validate_draft(draft, lists, known_links):
     topics = draft.get("Topic") or []
     if isinstance(topics, list) and "Other" in topics and len(topics) > 1:
         problems.append("Topic Other must be on its own")
+    if topics == ["Other"]:
+        suggested = suggested_topic(draft.get("Claude notes"))
+        if not suggested:
+            problems.append("Topic Other needs a 'Suggested topic: <name>' line in Claude notes")
+        elif suggested.lower() in {t.lower() for t in lists["topic"]}:
+            problems.append(f"suggested topic {suggested!r} is already in the list; use it instead of Other")
     if bool(draft.get("Scrap")) != bool(draft.get("Scrap reason")):
         problems.append("Scrap and Scrap reason must both be filled or both blank")
     if draft.get("Type") == "TS" and not TS_ID.match(draft.get("Request ID") or ""):
@@ -225,6 +232,47 @@ def cmd_create(client, path):
     created = client.create_records(REQUESTS, drafts)
     print(f"created {len(created)} draft(s)")
     return 0
+
+
+SUGGESTED_TOPIC = re.compile(r"^\s*Suggested topic:\s*(.+?)\s*$", re.MULTILINE | re.IGNORECASE)
+PROPOSED_TOPIC = re.compile(r'^Add topic "(.+?)"', re.IGNORECASE)
+TOPIC_THRESHOLD = 3  # Other requests sharing a suggestion before it's proposed (Hayden, 2026-11-02)
+
+
+def suggested_topic(notes):
+    m = SUGGESTED_TOPIC.search(notes or "")
+    return m.group(1).strip(" .\"'") if m else None
+
+
+def topic_suggestions(rows, proposed_rules, lists, threshold=TOPIC_THRESHOLD):
+    """Suggested topics ready to propose: at least `threshold` requests tagged only Other
+    share the suggestion (case-insensitive), it isn't already a topic, and no Rule Changes
+    row has proposed it before (whatever its status). Returns
+    [{"topic", "count", "records": [record ids], "request_ids": [...]}], biggest first."""
+    taken = {t.lower() for t in lists["topic"]}
+    for rule in proposed_rules:
+        m = PROPOSED_TOPIC.match(rule or "")
+        if m:
+            taken.add(m.group(1).strip().lower())
+    groups = {}
+    for r in rows:
+        f = r["fields"]
+        if (f.get("Topic") or []) != ["Other"]:
+            continue
+        name = suggested_topic(f.get("Claude notes"))
+        if not name or name.lower() in taken:
+            continue
+        g = groups.setdefault(name.lower(), {"topic": name, "records": [], "request_ids": []})
+        g["records"].append(r["id"])
+        g["request_ids"].append(f.get("Request ID"))
+    ready = [dict(g, count=len(g["records"])) for g in groups.values() if len(g["records"]) >= threshold]
+    return sorted(ready, key=lambda g: (-g["count"], g["topic"].lower()))
+
+
+def cmd_topic_suggestions(client):
+    rows = client.list_records(REQUESTS, fields=["Request ID", "Topic", "Claude notes"])
+    rules = [r["fields"].get("Proposed rule") for r in client.list_records(RULE_CHANGES, fields=["Proposed rule"])]
+    print(json.dumps(topic_suggestions(rows, rules, load_lists()), indent=2))
 
 
 HAYDEN_ONLY = ("Approved", "Why I changed it", "Rule changes")
@@ -348,6 +396,8 @@ def main(argv):
             cmd_open_changes(client)
         elif cmd == "set-change" and len(args) in (2, 3):
             cmd_set_change(client, *args)
+        elif cmd == "topic-suggestions":
+            cmd_topic_suggestions(client)
         elif cmd == "update" and len(args) == 1:
             return cmd_update(client, args[0])
         else:
