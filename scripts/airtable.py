@@ -3,7 +3,10 @@
     python3 scripts/airtable.py logged              # Slack days to read, Slack links/threads already logged, next TS ID
     python3 scripts/airtable.py create drafts.json  # create draft Requests (validated first; all or nothing)
     python3 scripts/airtable.py finish-run run.json # log the run in Runs (only after its drafts are written)
-    python3 scripts/airtable.py pending-changes     # records whose "Why I changed it" has no rule change yet
+    python3 scripts/airtable.py party "Name" "Client" 2026-10-28   # Requester party, with fallbacks
+    python3 scripts/airtable.py open-requests       # requests not yet closed, for the follow-up
+    python3 scripts/airtable.py follow-up followups.json   # add dated notes + update follow-up fields only
+    python3 scripts/airtable.py pending-changes     # requests whose labels Hayden changed, no rule change yet
     python3 scripts/airtable.py propose change.json # create one Rule Changes row linked to its source records
     python3 scripts/airtable.py open-changes        # Rule Changes with status Open
     python3 scripts/airtable.py set-change recXXX Accepted [commit-url]   # only when Hayden says so
@@ -11,8 +14,9 @@
     python3 scripts/airtable.py update updates.json # overwrite fields on existing Requests (only when Hayden asks)
 
 `update` is for edits Hayden asks for in a conversation (e.g. back-filling a new field);
-the nightly run never uses it. It never sets Approved or Hayden's own fields. There is
-deliberately no command to delete a request record.
+the nightly run never uses it. The nightly run edits existing requests only through
+`follow-up`. Neither ever sets Approved. There is deliberately no command to delete a
+request record.
 """
 
 import json
@@ -31,8 +35,9 @@ SLACK_LINK = re.compile(r"^https://[a-z0-9-]+\.slack\.com/archives/[A-Z0-9]+/p\d
 EASTERN = ZoneInfo("America/New_York")
 FIRST_RUN_DAYS = 7  # nothing logged at all: read the last week
 WAIT_DAYS = 2  # the newest day a run reads is the day before yesterday
-REQUIRED = ["Summary", "Message", "Type", "Topic", "Slack link", "Slack thread", "Message time", "Claude notes",
-            "Original draft"]
+REQUIRED = ["Summary", "Message", "Type", "Topic", "Requester party", "Root cause", "Slack link", "Slack thread",
+            "Message time", "Claude notes", "Original draft"]
+SCRAP_REASON = re.compile(r"^\s*Scrap reason:\s*\S", re.MULTILINE | re.IGNORECASE)
 
 
 def next_ts_number(ids):
@@ -67,7 +72,7 @@ def scan_window(today, last_covered_to=None, latest_message_time=None):
     return (start, to) if start <= to else None
 
 
-RUN_COUNTS = ("Drafts created", "Already logged", "Personal skipped", "Rule changes logged")
+RUN_COUNTS = ("Drafts created", "Already logged", "Personal skipped", "Rule changes logged", "Followed up", "Closed")
 
 
 def validate_run(run, window):
@@ -132,8 +137,8 @@ def validate_draft(draft, lists, known_links):
             problems.append("Topic Other needs a 'Suggested topic: <name>' line in Claude notes")
         elif suggested.lower() in {t.lower() for t in lists["topic"]}:
             problems.append(f"suggested topic {suggested!r} is already in the list; use it instead of Other")
-    if bool(draft.get("Scrap")) != bool(draft.get("Scrap reason")):
-        problems.append("Scrap and Scrap reason must both be filled or both blank")
+    if draft.get("Scrap") and not SCRAP_REASON.search(draft.get("Claude notes") or ""):
+        problems.append("Scrap needs a 'Scrap reason: <reason>' line in Claude notes")
     if draft.get("Type") == "TS" and not TS_ID.match(draft.get("Request ID") or ""):
         problems.append("TS draft needs a Request ID like TS-0008")
     if draft.get("Type") == "Personal":
@@ -275,7 +280,7 @@ def cmd_topic_suggestions(client):
     print(json.dumps(topic_suggestions(rows, rules, load_lists()), indent=2))
 
 
-HAYDEN_ONLY = ("Approved", "Why I changed it", "Rule changes")
+HAYDEN_ONLY = ("Approved", "Rule changes")
 
 
 def validate_update(fields, lists):
@@ -340,9 +345,170 @@ def cmd_update(client, path):
     return 0
 
 
+# Labels that record Claude's classification call. Follow-up fields (Status, Response, ...)
+# change as the work happens, so they never count as Hayden correcting Claude.
+CLASSIFICATION = ("Type", "Topic", "Intake type", "Source", "Requester party", "Needs help", "Needs help party",
+                  "Client", "Urgency", "Resource group", "Resource required", "Root cause", "Scrap")
+LOOP_START = "2026-11-03"  # requests drafted earlier predate Original-draft comparison (rules v1.13)
+
+
+def _plain_value(value):
+    if isinstance(value, bool):
+        return "true" if value else ""
+    if isinstance(value, list):
+        return ", ".join(sorted(str(v).strip() for v in value))
+    return str(value or "").strip()
+
+
+def parse_original_draft(text):
+    """'Field: value' lines -> {field: value}. Only classification fields are kept."""
+    out = {}
+    for line in (text or "").splitlines():
+        name, sep, value = line.partition(":")
+        if sep and name.strip() in CLASSIFICATION:
+            out[name.strip()] = value.strip()
+    return out
+
+
+def label_changes(fields):
+    """[(field, Claude's value, current value)] for classification labels in Original draft
+    that no longer match. Multi-value labels compare as sets; case and order don't matter."""
+    changes = []
+    for name, drafted in parse_original_draft(fields.get("Original draft")).items():
+        now = fields.get(name)
+        if name == "Scrap":
+            same = (drafted.lower() in ("true", "yes", "ticked", "checked")) == bool(now)
+        elif isinstance(now, list):
+            same = {v.strip().lower() for v in drafted.split(",") if v.strip()} == {v.lower() for v in now}
+        else:
+            same = drafted.lower() == _plain_value(now).lower()
+        if not same:
+            changes.append((name, drafted, _plain_value(now)))
+    return changes
+
+
+def pending_changes(rows, start=LOOP_START):
+    out = []
+    for r in rows:
+        f = r["fields"]
+        if f.get("Rule changes") or eastern_day(r["createdTime"]).isoformat() < start:
+            continue
+        changes = label_changes(f)
+        if changes:
+            out.append({"id": r["id"], "Request ID": f.get("Request ID"), "Summary": f.get("Summary"),
+                        "Message": f.get("Message"), "Claude notes": f.get("Claude notes"),
+                        "changes": [{"field": n, "claude": a, "now": b} for n, a, b in changes]})
+    return out
+
+
 def cmd_pending_changes(client):
-    rows = client.list_records(REQUESTS, formula="AND({Why I changed it}, NOT({Rule changes}))")
+    rows = client.list_records(REQUESTS)
+    print(json.dumps(pending_changes(rows), indent=2, default=str))
+
+
+CLOSED = ("Done", "Not an ask")
+FOLLOW_UP_FIELDS = ("Status", "Unblocked date", "Response", "Routed to", "Resource link", "Related requests")
+
+
+def is_closed(fields):
+    return fields.get("Status") in CLOSED
+
+
+def validate_follow_up(entry, current, lists):
+    """Problems with one follow-up entry against the record as it is now."""
+    problems = []
+    fields, note = entry.get("fields") or {}, (entry.get("note") or "").strip()
+    if not note:
+        problems.append("needs a note saying what happened")
+    if "\n" in note:
+        problems.append("note must be one line")
+    if is_closed(current):
+        problems.append(f"already closed ({current['Status']}); a recurrence is a new request")
+    for name in fields:
+        if name not in FOLLOW_UP_FIELDS:
+            problems.append(f"{name} can't be changed by a follow-up")
+    specs = {f["name"]: f for f in requests_fields(lists)}
+    for name, value in fields.items():
+        spec = specs.get(name)
+        if name not in FOLLOW_UP_FIELDS or not spec or value in (None, "", []):
+            continue
+        choices = [c["name"] for c in spec.get("options", {}).get("choices", [])]
+        if spec["type"] == "singleSelect" and value not in choices:
+            problems.append(f"{name}={value!r} is not in the list")
+        if spec["type"] == "multipleSelects":
+            if not isinstance(value, list):
+                problems.append(f"{name} must be a list")
+            else:
+                problems += [f"{name}={v!r} is not in the list" for v in value if v not in choices]
+        if spec["type"] == "date":
+            try:
+                date.fromisoformat(value)
+            except (TypeError, ValueError):
+                problems.append(f"{name} must be a date like 2026-11-03")
+    if fields.get("Status") == "Done" and not (fields.get("Unblocked date") or current.get("Unblocked date")):
+        problems.append("Done needs an Unblocked date")
+    return problems
+
+
+def add_note(existing, note, day):
+    line = f"{day.isoformat()}: {note.strip()}"
+    return f"{existing.rstrip()}\n{line}" if (existing or "").strip() else line
+
+
+def cmd_open_requests(client):
+    keep = ["Request ID", "Summary", "Requester", "Client", "Status", "Response", "Unblocked date", "Routed to",
+            "Resource link", "Notes", "Slack link", "Slack thread", "Message time", "Approved", "Scrap"]
+    rows = [r for r in client.list_records(REQUESTS, fields=keep)
+            if r["fields"].get("Request ID") and not is_closed(r["fields"])]
+    rows.sort(key=lambda r: r["fields"]["Request ID"])
     print(json.dumps([{"id": r["id"], **r["fields"]} for r in rows], indent=2, default=str))
+
+
+def cmd_follow_up(client, path):
+    """followups.json: [{"Request ID": "TS-0041", "note": "...", "fields": {"Status": "Done", ...}}]. All or nothing."""
+    lists = load_lists()
+    entries = json.load(open(path, encoding="utf-8"))
+    rows = client.list_records(REQUESTS, fields=["Request ID", "Status", "Unblocked date", "Notes"])
+    by_id = {}
+    for r in rows:
+        if r["fields"].get("Request ID"):
+            by_id.setdefault(r["fields"]["Request ID"], []).append(r)
+    today, errors, writes, seen = today_eastern(), [], [], set()
+    for e in entries:
+        rid = e.get("Request ID")
+        matches = by_id.get(rid, [])
+        problems = [] if len(matches) == 1 else [f"{len(matches)} records have this Request ID (need exactly 1)"]
+        if rid in seen:
+            problems.append("listed twice")
+        seen.add(rid)
+        if not problems:
+            problems = validate_follow_up(e, matches[0]["fields"], lists)
+        if problems:
+            errors.append(f"{rid}: " + "; ".join(problems))
+            continue
+        fields = dict(e.get("fields") or {})
+        fields["Notes"] = add_note(matches[0]["fields"].get("Notes"), e["note"], today)
+        writes.append((matches[0]["id"], fields))
+    if errors:
+        print("Nothing written. Fix these first:\n" + "\n".join(errors), file=sys.stderr)
+        return 1
+    client.update_records(REQUESTS, writes, typecast=True)  # values validated above
+    closed = sum(1 for _, f in writes if f.get("Status") in CLOSED)
+    print(f"followed up {len(writes)} request(s), closed {closed}")
+    return 0
+
+
+def cmd_party(client, person, client_name, day):
+    import os
+    from pelos import fetch_rows, pick_party
+    history = [r["fields"] for r in client.list_records(REQUESTS, fields=["Requester", "Requester party"])]
+    roster, note = None, ""
+    if os.environ.get("PELOS_TOKEN", "").strip():
+        roster = fetch_rows()
+    else:
+        note = "PELOS_TOKEN not set, so PelOS was skipped"
+    party, why = pick_party(person, client_name, day, roster, history, load_lists()["party"])
+    print(json.dumps({"party": party, "why": "; ".join(x for x in (why, note) if x)}))
 
 
 def cmd_propose(client, path):
@@ -396,6 +562,12 @@ def main(argv):
             cmd_open_changes(client)
         elif cmd == "set-change" and len(args) in (2, 3):
             cmd_set_change(client, *args)
+        elif cmd == "party" and len(args) == 3:
+            cmd_party(client, *args)
+        elif cmd == "open-requests":
+            cmd_open_requests(client)
+        elif cmd == "follow-up" and len(args) == 1:
+            return cmd_follow_up(client, args[0])
         elif cmd == "topic-suggestions":
             cmd_topic_suggestions(client)
         elif cmd == "update" and len(args) == 1:

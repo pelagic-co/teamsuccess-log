@@ -87,6 +87,37 @@ def role_on(rows, person, client, day):
     return roles[0], why
 
 
+RETIRED_PARTIES = ("Account team",)  # split into CML / Senior operator / Tactical operator (2026-10-23)
+
+
+def pick_party(person, client, day, roster, history, allowed):
+    """Requester party in the skill's order. roster is PelOS rows (None = no PelOS access);
+    history is earlier request fields with Requester / Requester party. Returns (party, why);
+    why starts with "best guess" for steps 3-4, and party is None only when step 5 (Claude's
+    own judgement) is needed."""
+    if not client or _plain(client).strip() in ("internal", ""):
+        return "Services team", ""
+    miss = "PelOS not checked"
+    if roster is not None:
+        role, miss = role_on(roster, person, client, day)
+        if role:
+            return role, miss
+    counts = {}
+    for f in history:
+        party = f.get("Requester party")
+        if party and party in allowed and party not in RETIRED_PARTIES and same_person(person, f.get("Requester") or ""):
+            counts[party] = counts.get(party, 0) + 1
+    if counts:
+        best = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
+        return best, f"best guess: {miss}; their most common party on earlier requests"
+    if roster is not None:
+        active = sorted({r["role"] for r in roster if same_person(person, r["person"]) and r["status"] == "ACTIVE"},
+                        key=SENIORITY.index)
+        if active:
+            return active[0], f"best guess: {miss}; their most senior active PelOS role"
+    return None, f"{miss}; no earlier requests or PelOS role, so pick the closest party yourself and say why"
+
+
 def fetch_rows():
     import os
     token = os.environ.get("PELOS_TOKEN", "").strip()

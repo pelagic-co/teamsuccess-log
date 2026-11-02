@@ -28,7 +28,9 @@ Hayden ticks Approved.
    with these scopes: `data.records:read`, `data.records:write`, `schema.bases:read`,
    `schema.bases:write`.
 3. Add both to this cloud environment's secrets as `AIRTABLE_TOKEN` and `AIRTABLE_BASE_ID`,
-   and add `api.airtable.com` to its allowed network domains.
+   and add `api.airtable.com` to its allowed network domains. For the Requester party
+   lookup, also add a second token limited to the **PelOS** base with only
+   `data.records:read`, as `PELOS_TOKEN`.
 4. Claude runs `python3 scripts/build_base.py` to build the tables.
 5. Finish by hand (Airtable doesn't let Claude make these):
    - **Checks** formula field on Requests (the builder prints the formula to paste).
