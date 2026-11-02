@@ -7,8 +7,11 @@
     python3 scripts/airtable.py propose change.json # create one Rule Changes row linked to its source records
     python3 scripts/airtable.py open-changes        # Rule Changes with status Open
     python3 scripts/airtable.py set-change recXXX Accepted [commit-url]   # only when Hayden says so
+    python3 scripts/airtable.py update updates.json # overwrite fields on existing Requests (only when Hayden asks)
 
-There is deliberately no command to edit or delete a request record.
+`update` is for edits Hayden asks for in a conversation (e.g. back-filling a new field);
+the nightly run never uses it. It never sets Approved or Hayden's own fields. There is
+deliberately no command to delete a request record.
 """
 
 import json
@@ -224,6 +227,71 @@ def cmd_create(client, path):
     return 0
 
 
+HAYDEN_ONLY = ("Approved", "Why I changed it", "Rule changes")
+
+
+def validate_update(fields, lists):
+    """Returns a list of problems with one record's overwrite. Empty means it may be written."""
+    problems = []
+    specs = {f["name"]: f for f in requests_fields(lists)}
+    if not fields:
+        return ["no fields to change"]
+    for name, value in fields.items():
+        if name in HAYDEN_ONLY:
+            problems.append(f"{name} is Hayden's; Claude never sets it")
+            continue
+        spec = specs.get(name)
+        if not spec:
+            problems.append(f"unknown field {name!r}")
+            continue
+        if value in (None, "", []):
+            continue
+        if spec["type"] == "singleSelect":
+            if value not in [c["name"] for c in spec["options"]["choices"]]:
+                problems.append(f"{name}={value!r} is not in the list")
+        if spec["type"] == "multipleSelects":
+            allowed = [c["name"] for c in spec["options"]["choices"]]
+            if not isinstance(value, list):
+                problems.append(f"{name} must be a list")
+            else:
+                problems += [f"{name}={v!r} is not in the list" for v in value if v not in allowed]
+    topics = fields.get("Topic") or []
+    if isinstance(topics, list) and "Other" in topics and len(topics) > 1:
+        problems.append("Topic Other must be on its own")
+    return problems
+
+
+def cmd_update(client, path):
+    """updates.json: [{"Request ID": "TS-0008", "fields": {"Topic": ["Ops Hub"]}}, ...]. All or nothing."""
+    lists = load_lists()
+    updates = json.load(open(path, encoding="utf-8"))
+    rows = client.list_records(REQUESTS, fields=["Request ID"])
+    ids = {}
+    for r in rows:
+        rid = r["fields"].get("Request ID")
+        if rid:
+            ids.setdefault(rid, []).append(r["id"])
+    errors, writes, seen = [], [], set()
+    for u in updates:
+        rid = u.get("Request ID")
+        problems = validate_update(u.get("fields") or {}, lists)
+        if rid in seen:
+            problems.append("listed twice")
+        seen.add(rid)
+        if len(ids.get(rid, [])) != 1:
+            problems.append(f"{len(ids.get(rid, []))} records have this Request ID (need exactly 1)")
+        if problems:
+            errors.append(f"{rid}: " + "; ".join(problems))
+        else:
+            writes.append((ids[rid][0], u["fields"]))
+    if errors:
+        print("Nothing written. Fix these first:\n" + "\n".join(errors), file=sys.stderr)
+        return 1
+    client.update_records(REQUESTS, writes)
+    print(f"updated {len(writes)} record(s)")
+    return 0
+
+
 def cmd_pending_changes(client):
     rows = client.list_records(REQUESTS, formula="AND({Why I changed it}, NOT({Rule changes}))")
     print(json.dumps([{"id": r["id"], **r["fields"]} for r in rows], indent=2, default=str))
@@ -280,6 +348,8 @@ def main(argv):
             cmd_open_changes(client)
         elif cmd == "set-change" and len(args) in (2, 3):
             cmd_set_change(client, *args)
+        elif cmd == "update" and len(args) == 1:
+            return cmd_update(client, args[0])
         else:
             print(__doc__)
             return 2

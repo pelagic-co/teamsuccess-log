@@ -9,15 +9,18 @@ This file is the single home for every intake and classification rule. Hayden ed
 (from Claude Code on his phone or anywhere else); each edit is a commit; the next run uses
 the new version. If a rule is not written here, it is not a rule.
 
-**Rules version:** 2026-11-02 · v1.9
+**Rules version:** 2026-11-02 · v1.10
 
 ## Hard rules (never break these)
 
-1. **Drafts only.** Create new records. Never tick **Approved**. Never untick it.
-2. **Approved records are Hayden's.** Never edit, re-classify, comment on, or delete an
-   approved record without asking Hayden in the conversation first and getting a yes.
-3. **Never touch existing drafts either.** A run only creates new records in Requests and
-   new rows in Rule Changes. Hayden does all editing.
+1. **Never tick Approved. Never untick it.** Never fill **Why I changed it** or
+   **Rule changes** on a request; those are Hayden's.
+2. **The nightly run only creates.** It creates new records in Requests and new rows in
+   Rule Changes, and never edits an existing request.
+3. **Overwriting is fine when Hayden asks.** In a conversation, when Hayden asks, Claude
+   may overwrite any other field on existing requests, drafts or approved (e.g.
+   back-filling a new field), with `python3 scripts/airtable.py update`. Say in the
+   Changelog what was overwritten.
 4. **Never delete anything.** A message that is not an ask, or is a Personal ask, is
    skipped, never logged-then-deleted.
 5. **Personal asks are not logged in this base.** List each one in the run summary
@@ -348,3 +351,7 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
   Search, Client Ops Execution, Templates & SOPs, Hours & Capacity, Accounts & AI Tools,
   Other). Required on every draft; Other only on its own. The list lives only here, not in
   the Brain. TS-0008 to TS-0076 were back-filled.
+- 2026-11-02 · v1.10: Claude may overwrite existing requests (drafts or approved) when
+  Hayden asks in a conversation, via the new `update` command; never Approved, Why I
+  changed it or Rule changes. The nightly run still only creates. Used first to back-fill
+  Topic on TS-0008 to TS-0076.

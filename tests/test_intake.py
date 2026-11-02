@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from datetime import date  # noqa: E402
 
 from airtable import (eastern_day, field_type_drift, latest_message_before, next_ts_number, scan_window,  # noqa: E402
-                      validate_draft, validate_run)
+                      validate_draft, validate_run, validate_update)
 from build_base import build  # noqa: E402
 from lists import group_of, load_lists, resource_required_values  # noqa: E402
 from schema import REQUESTS, RULE_CHANGES, checks_formula, requests_fields, tables  # noqa: E402
@@ -296,6 +296,26 @@ class RunLog(unittest.TestCase):
 
     def test_nothing_due(self):
         self.assertEqual(validate_run(self.RUN, None), ["no Slack days were due, so there is no run to log"])
+
+
+class Overwrite(unittest.TestCase):
+    def test_good_update(self):
+        self.assertEqual(validate_update({"Topic": ["Ops Hub", "Forecasting"]}, LISTS), [])
+
+    def test_hayden_fields_refused(self):
+        for name in ("Approved", "Why I changed it", "Rule changes"):
+            self.assertIn(f"{name} is Hayden's; Claude never sets it", validate_update({name: True}, LISTS))
+
+    def test_values_from_list(self):
+        self.assertIn("Topic='Inventory' is not in the list", validate_update({"Topic": ["Inventory"]}, LISTS))
+        self.assertIn("Urgency='Soon' is not in the list", validate_update({"Urgency": "Soon"}, LISTS))
+
+    def test_other_alone(self):
+        self.assertIn("Topic Other must be on its own", validate_update({"Topic": ["Other", "COGS"]}, LISTS))
+
+    def test_unknown_and_empty(self):
+        self.assertIn("unknown field 'Priority'", validate_update({"Priority": "High"}, LISTS))
+        self.assertEqual(validate_update({}, LISTS), ["no fields to change"])
 
 
 class RequestIds(unittest.TestCase):
