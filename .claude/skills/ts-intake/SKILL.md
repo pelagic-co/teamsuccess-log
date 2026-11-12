@@ -9,7 +9,7 @@ This file is the single home for every intake and classification rule. Hayden ed
 (from Claude Code on his phone or anywhere else); each edit is a commit; the next run uses
 the new version. If a rule is not written here, it is not a rule.
 
-**Rules version:** 2026-11-02 · v1.13
+**Rules version:** 2026-11-12 · v1.14
 
 ## Hard rules (never break these)
 
@@ -151,10 +151,12 @@ best fit and say in **Claude notes** that it's a best guess and why.
   - **Forecasting:** demand planners, forecast files, S&OP, MRP, WOH targets, projections.
     Forecast work built inside an Ops Hub gets both Ops Hub and Forecasting.
   - **COGS:** cost of goods, landed cost, unit cost, margin.
-  - **Vendor Search:** 3PL, co-packer, CM and lab searches: RFQs, quotes, eval matrices,
-    vendor contacts.
+  - **Vendor Search:** finding or choosing a vendor (3PL, CM, co-packer, lab, packaging
+    supplier): RFPs, RFQs, quotes, eval matrices, vendor contacts. Always add the vendor's
+    own topic too (3PL, Manufacturer, Testing or Packaging).
   - **Client Ops Execution:** one-off client operations: PO status, 3PL portal how-tos,
-    inventory mismatches between systems, packaging and materials.
+    inventory mismatches between systems, packaging and materials. Add the vendor's own
+    topic too when the ask is about one (e.g. a 3PL portal how-to is also 3PL).
   - **Templates & SOPs:** internal templates, SOPs, checklists, one-pagers, reusable tools
     (RACI, EOW report, offboarding).
   - **Hours & Capacity:** hours tracker, capacity dashboard, operator UI, SOW and
@@ -162,6 +164,19 @@ best fit and say in **Claude notes** that it's a best guess and why.
   - **Accounts & AI Tools:** Claude, 1Password, Notion, Gemini, 2FA, AI agent builds.
   - **GS1:** UPCs, GTINs, barcodes, GS1 company prefix and membership, product data
     registered with GS1. A barcode ask about packaging artwork gets GS1 too.
+  - **3PL, Manufacturer, Testing, Packaging** say which kind of vendor the ask is about.
+    They stack with what kind of work it is: a 3PL RFP is Vendor Search + 3PL; a VAS
+    order in a 3PL portal is Client Ops Execution + 3PL. Add one only when the ask is
+    about that vendor, not when it just mentions one (a forecast that pulls 3PL inventory
+    is Forecasting only).
+    - **3PL:** 3PLs, warehouses and fulfilment partners: searches, rate cards, portals
+      (VAS, relabeling), invoices, orders flowing to the 3PL/WMS, holding orders back.
+    - **Manufacturer:** contract manufacturers (CM, co-man) and co-packers: searches,
+      quotes, production runs, working with or sharing information with one.
+    - **Testing:** labs and product testing: lab searches and contacts (e.g. Eurofins),
+      test requirements, COAs, shelf-life and stability testing.
+    - **Packaging:** packaging and materials: packaging suppliers, specs, artwork,
+      dielines, print plates, getting packaging to the CM or 3PL.
   - **Other:** none of the above fits. Only on its own. Add a line to **Claude notes**
     reading `Suggested topic: <name>`, naming the topic you'd have picked (a short, general
     name like "Packaging", not a client or one-off). Reuse an earlier suggestion's exact
@@ -371,6 +386,10 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
     "Hours & Capacity",
     "Accounts & AI Tools",
     "GS1",
+    "3PL",
+    "Manufacturer",
+    "Testing",
+    "Packaging",
     "Other"
   ]
 }
@@ -450,3 +469,7 @@ The block below is read by the base builder and the tests. Keep it valid JSON.
     updates the follow-up fields and closes them when resolved. Runs log how many.
   - Rule-change loop now spots Hayden's changes by comparing labels to Original draft
     (requests drafted from 2026-11-03), since Why I changed it is gone.
+- 2026-11-12 · v1.14: new topics **3PL**, **Manufacturer** (CMs and co-packers),
+  **Testing** (labs) and **Packaging**, added by Hayden. They stack with Vendor Search
+  and Client Ops Execution (kind of work + kind of vendor). Existing requests re-tagged
+  with `update` (Topic and the Topic line of Original draft).

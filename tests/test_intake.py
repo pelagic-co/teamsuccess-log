@@ -327,7 +327,7 @@ class NewTopics(unittest.TestCase):
     def test_other_draft_needs_a_suggestion(self):
         p = validate_draft(draft(Topic=["Other"]), LISTS, set())
         self.assertIn("Topic Other needs a 'Suggested topic: <name>' line in Claude notes", p)
-        ok = draft(Topic=["Other"], **{"Claude notes": "Packaging spec ask.\nSuggested topic: Packaging"})
+        ok = draft(Topic=["Other"], **{"Claude notes": "Insurance claim ask.\nSuggested topic: Insurance"})
         self.assertEqual(validate_draft(ok, LISTS, set()), [])
 
     def test_suggestion_already_in_list_refused(self):
@@ -336,26 +336,26 @@ class NewTopics(unittest.TestCase):
                       validate_draft(d, LISTS, set()))
 
     def test_three_matching_others_are_proposed(self):
-        rows = [other("TS-0100", "Suggested topic: Packaging"),
-                other("TS-0101", "x\nsuggested topic: packaging."),
-                other("TS-0102", "Suggested topic: Packaging"),
+        rows = [other("TS-0100", "Suggested topic: Insurance"),
+                other("TS-0101", "x\nsuggested topic: insurance."),
+                other("TS-0102", "Suggested topic: Insurance"),
                 other("TS-0103", "Suggested topic: Freight")]
         out = topic_suggestions(rows, [], LISTS)
-        self.assertEqual([(g["topic"], g["count"]) for g in out], [("Packaging", 3)])
+        self.assertEqual([(g["topic"], g["count"]) for g in out], [("Insurance", 3)])
         self.assertEqual(out[0]["request_ids"], ["TS-0100", "TS-0101", "TS-0102"])
 
     def test_two_is_not_enough(self):
-        rows = [other("TS-0100", "Suggested topic: Packaging"), other("TS-0101", "Suggested topic: Packaging")]
+        rows = [other("TS-0100", "Suggested topic: Insurance"), other("TS-0101", "Suggested topic: Insurance")]
         self.assertEqual(topic_suggestions(rows, [], LISTS), [])
 
     def test_only_other_alone_counts(self):
-        rows = [other(f"TS-01{i:02}", "Suggested topic: Packaging", topic=("Ops Hub",)) for i in range(3)]
+        rows = [other(f"TS-01{i:02}", "Suggested topic: Insurance", topic=("Ops Hub",)) for i in range(3)]
         rows += [other("TS-0200", "no suggestion here")]
         self.assertEqual(topic_suggestions(rows, [], LISTS), [])
 
     def test_never_proposed_twice(self):
-        rows = [other(f"TS-01{i:02}", "Suggested topic: Packaging") for i in range(4)]
-        self.assertEqual(topic_suggestions(rows, ['Add topic "packaging" to the Topic list.'], LISTS), [])
+        rows = [other(f"TS-01{i:02}", "Suggested topic: Insurance") for i in range(4)]
+        self.assertEqual(topic_suggestions(rows, ['Add topic "insurance" to the Topic list.'], LISTS), [])
 
     def test_existing_topic_not_proposed(self):
         rows = [other(f"TS-01{i:02}", "Suggested topic: COGS") for i in range(3)]
